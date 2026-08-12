@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="state_waiting_headset">Ищу телефон</string>
+    <string name="detail_mismatch_headset">Отсканируйте QR с телефона или введите его код</string>
+    <string name="state_stopped_headset">Остановлено</string>
+
+    <string name="section_pairing">Сопряжение</string>
+    <string name="section_notifications_hint_headset">Как здесь показываются пересланные уведомления.</string>
+
+    <string name="pairing_done">Сопряжено — соединение зашифровано</string>
+    <string name="pairing_none">Пока не сопряжено — соединение не шифруется</string>
+    <string name="pairing_applied">Настройки получены с телефона</string>
+    <string name="pairing_rejected">Этот код не от нашего приложения</string>
+    <string name="label_code">Код сопряжения</string>
+    <string name="label_code_hint">16 цифр с экрана телефона</string>
+    <string name="label_host">Адрес телефона</string>
+    <string name="label_port">Порт</string>
+
+    <string name="label_who_hint_headset">Должно совпадать с настройкой на телефоне.</string>
+    <string name="label_gap">Пауза между уведомлениями</string>
+    <string name="label_gap_hint">Если уведомления приходят пачкой, пауза не даёт системе проглотить часть из них.</string>
+    <string name="gap_none">Без паузы</string>
+    <string name="gap_seconds">%1$d с</string>
+
+    <string name="action_scan">Сканировать QR</string>
+    <string name="action_test_notification">Проверить уведомление</string>
+    <string name="action_save">Сохранить</string>
+    <string name="action_back">Назад</string>
+
+    <string name="scan_title">Отсканируйте код с телефона</string>
+    <string name="scan_hint">Откройте приложение на телефоне, нажмите «Подключить шлем» и наведите камеру на экран.</string>
+    <string name="scan_hint_virtual">Камеры шлема отключены, видно только виртуальное окружение. Выдайте разрешение заново, отметив камеры устройства, либо введите код вручную.</string>
+    <string name="scan_camera_error">Камера недоступна. Введите код вручную.</string>
+    <string name="scan_unavailable">Этот шлем не даёт приложениям доступ к камере — введите код сопряжения ниже.</string>
+
+    <string name="stat_shown">показано</string>
+    <string name="stat_received">получено</string>
+    <string name="stat_cleared">снято</string>
+
+    <string name="selftest_title">Проверка уведомлений</string>
+    <string name="selftest_text">Опубликовано самим шлемом — телефон не участвовал.</string>
+
+    <string name="quit_message_headset">Соединение закроется, уведомления перестанут приходить до следующего запуска приложения.</string>
+</resources>

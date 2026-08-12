@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="channel_service">Состояние соединения</string>
+    <string name="channel_service_desc">Поддерживает связь со шлемом</string>
+    <string name="status_starting">Запуск…</string>
+
+    <string name="state_connected">Соединение установлено</string>
+    <string name="state_connecting">Подключаюсь</string>
+    <string name="state_waiting">Шлем не найден</string>
+    <string name="state_starting">Запускаюсь</string>
+    <string name="state_failed">Не удаётся соединиться</string>
+    <string name="state_mismatch">Коды не совпадают</string>
+    <string name="detail_mismatch">Введите на шлеме код с этого экрана</string>
+    <string name="state_stopped">Пересылка выключена</string>
+
+    <string name="detail_connected">%1$s · шлем на связи</string>
+    <string name="detail_waiting">%1$s · шлем вне зоны или выключен</string>
+    <string name="detail_failed">%1$s · подробности в журнале</string>
+
+    <string name="section_setup">Перед началом работы</string>
+    <string name="section_setup_hint">Две настройки, которые система просит подтвердить вручную.</string>
+    <string name="section_connection">Соединение</string>
+    <string name="section_connection_hint">Каким способом телефон связывается со шлемом.</string>
+    <string name="section_notifications">Уведомления</string>
+    <string name="section_notifications_hint">Что пересылать и как это будет выглядеть.</string>
+    <string name="section_stats">Статистика</string>
+    <string name="section_apps">Приложения</string>
+    <string name="section_apps_hint">Выберите, уведомления каких приложений пересылать.</string>
+
+    <string name="setup_listener">Доступ к уведомлениям</string>
+    <string name="setup_listener_hint">Без него приложение не видит ваших уведомлений.</string>
+    <string name="setup_battery">Работа без ограничений батареи</string>
+    <string name="setup_battery_hint">Иначе система остановит приложение, как только погаснет экран.</string>
+    <string name="setup_permissions">Доступ к Bluetooth</string>
+    <string name="setup_permissions_hint">Нужен, чтобы шлем смог найти этот телефон.</string>
+
+    <string name="action_test">Проверить</string>
+    <string name="action_pair">Подключить шлем</string>
+    <string name="action_restart">Переподключиться</string>
+    <string name="action_quit">Завершить работу</string>
+    <string name="action_done">Готово</string>
+    <string name="action_show_log">Показать журнал</string>
+    <string name="action_hide_log">Скрыть журнал</string>
+
+    <string name="pairing_title">Отсканируйте это в шлеме</string>
+    <string name="pairing_hint">Откройте приложение в шлеме, выберите «Сканировать QR» и наведите его на этот экран. В коде передаётся и способ соединения, так что вручную подгонять ничего не нужно.</string>
+    <string name="pairing_manual">Если камеры в шлеме нет, введите там эти цифры.</string>
+
+    <string name="transport_bluetooth">Bluetooth</string>
+    <string name="transport_wifi">Wi-Fi</string>
+    <string name="label_who_searches">Кто кого ищет</string>
+    <string name="who_headset">Шлем ищет телефон</string>
+    <string name="who_phone">Телефон ищет шлем</string>
+    <string name="label_who_hint">Обычно надёжнее, когда ищет шлем. Меняйте только если соединение не устанавливается.</string>
+    <string name="label_address">Этот телефон</string>
+
+    <string name="label_show_source">Название приложения в уведомлении</string>
+    <string name="label_show_source_hint">Каждое уведомление подписывается тем приложением, из которого пришло.</string>
+    <string name="label_persistent">Пересылать постоянные уведомления</string>
+    <string name="label_persistent_hint">Загрузки, музыка и всё остальное, что висит на экране постоянно.</string>
+    <string name="label_enabled">Пересылать уведомления</string>
+    <string name="label_enabled_hint">Выключение ставит пересылку на паузу, приложение продолжает работать.</string>
+    <string name="label_last_event">Последнее: %1$s</string>
+
+    <string name="stat_sent">отправлено</string>
+    <string name="stat_delivered">доставлено</string>
+    <string name="stat_filtered">отсеяно</string>
+    <string name="stat_lost">потеряно</string>
+    <string name="stat_reconnects">переподключений</string>
+    <string name="stat_forwarded">переслано</string>
+    <string name="stat_ping">отклик</string>
+    <string name="stat_online">на связи</string>
+    <string name="stat_waiting">в очереди</string>
+
+    <string name="filter_all_except">Все, кроме снятых</string>
+    <string name="filter_only_checked">Только отмеченные</string>
+    <string name="hint_search">Поиск</string>
+    <string name="apps_loading">Загружаю…</string>
+
+    <string name="test_title">Проверка связи</string>
+    <string name="test_text">Если вы читаете это в шлеме, соединение работает.</string>
+
+    <string name="section_role">Это устройство</string>
+    <string name="role_auto">Определено автоматически: %1$s</string>
+    <string name="role_manual">Выбрано вручную</string>
+    <string name="role_phone">Телефон</string>
+    <string name="role_headset">Шлем</string>
+    <string name="role_hint">Приложение одно на оба устройства. Меняйте, только если определилось неверно.</string>
+    <string name="role_switch_title">Сменить тип устройства?</string>
+    <string name="role_switch_message">Приложение перезапустится как «%1$s». Соединение закроется, настройки другой роли сохранятся.</string>
+    <string name="role_switch_confirm">Сменить</string>
+
+    <string name="quit_title">Завершить работу?</string>
+    <string name="quit_message">Пересылка остановится, соединение закроется, приложение полностью уйдёт из фона. До следующего запуска в шлем ничего приходить не будет.</string>
+    <string name="quit_confirm">Завершить</string>
+    <string name="quit_cancel">Отмена</string>
+    <plurals name="apps_count">
+        <item quantity="one">%1$d приложение</item>
+        <item quantity="few">%1$d приложения</item>
+        <item quantity="many">%1$d приложений</item>
+        <item quantity="other">%1$d приложения</item>
+    </plurals>
+</resources>

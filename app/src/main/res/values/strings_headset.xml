@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?><!-- Headset-side wording. Anything identical to the phone lives in strings.xml. -->
+<resources>
+    <string name="state_waiting_headset">Looking for the phone</string>
+    <string name="detail_mismatch_headset">Scan the QR from the phone, or type its code</string>
+    <string name="state_stopped_headset">Stopped</string>
+
+    <string name="section_pairing">Pairing</string>
+    <string name="section_notifications_hint_headset">How forwarded notifications appear here.</string>
+
+    <string name="pairing_done">Paired — the connection is encrypted</string>
+    <string name="pairing_none">Not paired yet — the connection is unencrypted</string>
+    <string name="pairing_applied">Settings received from the phone</string>
+    <string name="pairing_rejected">That code is not from this app</string>
+    <string name="label_code">Pairing code</string>
+    <string name="label_code_hint">16 digits shown on the phone</string>
+    <string name="label_host">Phone address</string>
+    <string name="label_port">Port</string>
+
+    <string name="label_who_hint_headset">Must match the setting on the phone.</string>
+    <string name="label_gap">Pause between notifications</string>
+    <string name="label_gap_hint">Spacing them out keeps a burst from being swallowed by the system.</string>
+    <string name="gap_none">No pause</string>
+    <string name="gap_seconds">%1$d s</string>
+
+    <string name="action_scan">Scan QR</string>
+    <string name="action_test_notification">Test notification</string>
+    <string name="action_save">Save</string>
+    <string name="action_back">Back</string>
+
+    <string name="scan_title">Scan the code from the phone</string>
+    <string name="scan_hint">Open the app on the phone, tap Connect a headset and hold the screen in view.</string>
+    <string name="scan_hint_virtual">The headset cameras are switched off, so only the virtual environment is visible. Reopen the permission and allow the device cameras, or type the code by hand.</string>
+    <string name="scan_camera_error">No camera available. Type the code instead.</string>
+    <string name="scan_unavailable">This headset does not give apps camera access — type the pairing code below.</string>
+
+    <string name="stat_shown">shown</string>
+    <string name="stat_received">received</string>
+    <string name="stat_cleared">dismissed</string>
+
+    <string name="selftest_title">Test notification</string>
+    <string name="selftest_text">Published by the headset itself — the phone was not involved.</string>
+
+    <string name="quit_message_headset">The connection closes and notifications stop arriving until you open the app again.</string>
+</resources>

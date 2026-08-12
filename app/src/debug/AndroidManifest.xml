@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <application>
+        <receiver
+            android:name=".phone.service.DebugReceiver"
+            android:exported="true"
+            tools:ignore="ExportedReceiver">
+            <intent-filter>
+                <action android:name="com.vasmarfas.notivisor.DEBUG" />
+            </intent-filter>
+        </receiver>
+        <receiver
+            android:name=".headset.service.DebugReceiver"
+            android:exported="true"
+            tools:ignore="ExportedReceiver">
+            <intent-filter>
+                <action android:name="com.vasmarfas.notivisor.DEBUG_HEADSET" />
+            </intent-filter>
+        </receiver>
+    </application>
+</manifest>

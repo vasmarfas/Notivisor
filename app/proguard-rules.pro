@@ -1,0 +1,2 @@
+-keep class com.vasmarfas.notivisor.phone.listener.NotifyListener { *; }
+-keep class com.vasmarfas.notivisor.phone.service.** { *; }

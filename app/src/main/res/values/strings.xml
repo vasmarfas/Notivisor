@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name" translatable="false">Notivisor</string>
+
+    <string name="channel_service">Connection status</string>
+    <string name="channel_service_desc">Keeps the connection to the headset alive</string>
+    <string name="status_starting">Starting…</string>
+
+    <string name="state_connected">Connected</string>
+    <string name="state_connecting">Connecting</string>
+    <string name="state_waiting">Headset not found</string>
+    <string name="state_starting">Starting</string>
+    <string name="state_failed">Connection problem</string>
+    <string name="state_mismatch">Pairing codes differ</string>
+    <string name="detail_mismatch">Enter the code from this screen on the headset</string>
+    <string name="state_stopped">Forwarding is off</string>
+
+    <string name="detail_connected">%1$s · headset is online</string>
+    <string name="detail_waiting">%1$s · headset is out of range or switched off</string>
+    <string name="detail_failed">%1$s · details in the log</string>
+
+    <string name="section_setup">Before you start</string>
+    <string name="section_setup_hint">Two settings the system needs from you.</string>
+    <string name="section_connection">Connection</string>
+    <string name="section_connection_hint">How the phone reaches the headset.</string>
+    <string name="section_notifications">Notifications</string>
+    <string name="section_notifications_hint">What gets forwarded and how it looks.</string>
+    <string name="section_stats">Statistics</string>
+    <string name="section_apps">Applications</string>
+    <string name="section_apps_hint">Choose which apps reach the headset.</string>
+
+    <string name="setup_listener">Access to notifications</string>
+    <string name="setup_listener_hint">Without it the app cannot see your notifications.</string>
+    <string name="setup_battery">Unrestricted battery use</string>
+    <string name="setup_battery_hint">Otherwise the system stops the app once the screen goes off.</string>
+    <string name="setup_permissions">Bluetooth access</string>
+    <string name="setup_permissions_hint">Needed for the headset to find this phone.</string>
+
+    <string name="action_test">Send a test</string>
+    <string name="action_pair">Connect a headset</string>
+    <string name="action_restart">Reconnect</string>
+    <string name="action_quit">Quit and stop</string>
+    <string name="action_done">Done</string>
+    <string name="action_show_log">Show log</string>
+    <string name="action_hide_log">Hide log</string>
+
+    <string name="pairing_title">Scan this in the headset</string>
+    <string name="pairing_hint">Open the app in your headset, choose Scan QR and hold this screen in view. The code also sets the connection type, so nothing else needs matching by hand.</string>
+    <string name="pairing_manual">If the headset has no camera, type these digits there instead.</string>
+
+    <string name="transport_bluetooth">Bluetooth</string>
+    <string name="transport_wifi">Wi-Fi</string>
+    <string name="label_who_searches">Which side searches</string>
+    <string name="who_headset">Headset finds the phone</string>
+    <string name="who_phone">Phone finds the headset</string>
+    <string name="label_who_hint">The headset searching is usually more reliable. Change this only if the connection will not come up.</string>
+    <string name="label_address">This phone</string>
+
+    <string name="label_show_source">App name in the notification</string>
+    <string name="label_show_source_hint">Each notification is labelled with the app it came from.</string>
+    <string name="label_persistent">Forward persistent notifications</string>
+    <string name="label_persistent_hint">Downloads, music playback and anything else that stays on screen.</string>
+    <string name="label_enabled">Forward notifications</string>
+    <string name="label_enabled_hint">Turning this off pauses forwarding but keeps the app running.</string>
+    <string name="label_last_event">Last one: %1$s</string>
+
+    <string name="stat_sent">sent</string>
+    <string name="stat_delivered">delivered</string>
+    <string name="stat_filtered">filtered out</string>
+    <string name="stat_lost">lost</string>
+    <string name="stat_reconnects">reconnects</string>
+    <string name="stat_forwarded">forwarded</string>
+    <string name="stat_ping">ping</string>
+    <string name="stat_online">online</string>
+    <string name="stat_waiting">waiting</string>
+
+    <string name="filter_all_except">Everything except unchecked</string>
+    <string name="filter_only_checked">Only the checked ones</string>
+    <string name="hint_search">Search</string>
+    <string name="apps_loading">Loading…</string>
+
+    <string name="test_title">Test notification</string>
+    <string name="test_text">If you can read this in the headset, the connection works.</string>
+
+    <string name="section_role">This device</string>
+    <string name="role_auto">Detected automatically: %1$s</string>
+    <string name="role_manual">Set by hand</string>
+    <string name="role_phone">Phone</string>
+    <string name="role_headset">Headset</string>
+    <string name="role_hint">The same app runs on both. Change this only if it guessed wrong.</string>
+    <string name="role_switch_title">Change the device type?</string>
+    <string name="role_switch_message">The app will restart as %1$s. The connection closes and settings for the other role are kept.</string>
+    <string name="role_switch_confirm">Change</string>
+
+    <string name="quit_title">Quit the app?</string>
+    <string name="quit_message">Forwarding stops, the connection closes and the app leaves the background completely. Nothing will reach the headset until you open it again.</string>
+    <string name="quit_confirm">Quit</string>
+    <string name="quit_cancel">Cancel</string>
+    <plurals name="apps_count">
+        <item quantity="one">%1$d application</item>
+        <item quantity="other">%1$d applications</item>
+    </plurals>
+</resources>
