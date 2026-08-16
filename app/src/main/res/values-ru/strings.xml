@@ -2,6 +2,9 @@
 <resources>
     <string name="channel_service">Состояние соединения</string>
     <string name="channel_service_desc">Поддерживает связь со шлемом</string>
+    <string name="channel_calls">Звонки</string>
+    <string name="channel_calls_desc">Входящие звонки, переданные с телефона</string>
+    <string name="messaging_you">Вы</string>
     <string name="status_starting">Запуск…</string>
 
     <string name="state_connected">Соединение установлено</string>
@@ -41,6 +44,7 @@
     <string name="action_done">Готово</string>
     <string name="action_show_log">Показать журнал</string>
     <string name="action_hide_log">Скрыть журнал</string>
+    <string name="action_share_log">Поделиться журналом</string>
 
     <string name="pairing_title">Отсканируйте это в шлеме</string>
     <string name="pairing_hint">Откройте приложение в шлеме, выберите «Сканировать QR» и наведите его на этот экран. В коде передаётся и способ соединения, так что вручную подгонять ничего не нужно.</string>
@@ -94,6 +98,83 @@
     <string name="quit_message">Пересылка остановится, соединение закроется, приложение полностью уйдёт из фона. До следующего запуска в шлем ничего приходить не будет.</string>
     <string name="quit_confirm">Завершить</string>
     <string name="quit_cancel">Отмена</string>
+    <string name="action_copy_code">Скопировать %1$s</string>
+    <string name="action_send_clipboard">Отправить буфер обмена</string>
+    <string name="action_find_headset">Найти шлем</string>
+    <string name="action_send_text">Набрать и отправить текст</string>
+
+    <string name="share_target">Открыть в шлеме</string>
+    <string name="share_sent">Отправлено в шлем</string>
+    <string name="share_no_link">В отправленном нет ссылки</string>
+
+    <string name="label_actions">Кнопки уведомлений</string>
+    <string name="label_actions_hint">Отвечать и нажимать кнопки уведомлений прямо из шлема.</string>
+    <string name="label_codes">Предлагать копировать коды</string>
+    <string name="label_codes_hint">Если в сообщении есть одноразовый код, в шлеме появится кнопка копирования.</string>
+    <string name="label_dnd">Заглушать телефон при подключении</string>
+    <string name="label_dnd_hint">Пока уведомления уходят в шлем, на телефоне включается режим «Не беспокоить», после отключения — выключается.</string>
+    <string name="label_dnd_permission">Нужно разрешение на режим «Не беспокоить»</string>
+    <string name="label_presence">Только пока шлем надет</string>
+    <string name="label_presence_hint">Приостанавливать пересылку, если шлем сообщает, что он снят или на зарядке.</string>
+
+    <string name="type_on_phone_title">Наберите на телефоне</string>
+    <string name="type_on_phone_hint">Шлем ждёт этот текст</string>
+    <string name="type_on_phone_send">Отправить</string>
+    <string name="keyboard_label">Notivisor (набор с телефона)</string>
+    <string name="keyboard_waiting">Ждём текст с телефона…</string>
+    <string name="keyboard_sent">Отправлено</string>
+    <string name="channel_type_request">Набор с телефона</string>
+    <string name="type_request_text">Шлем ждёт текст — нажмите, чтобы напечатать</string>
+
+    <string name="channel_mirror">Трансляция экрана</string>
+    <string name="mirror_notification_text">Экран транслируется в шлем</string>
+    <string name="section_mirror">Трансляция экрана</string>
+    <string name="section_mirror_hint">Касания доходят до телефона, если на нём включён сервис управления</string>
+    <string name="section_mirror_hint_phone">Только по Wi-Fi; шлем подключается к телефону напрямую</string>
+    <string name="mirror_idle">Не подключено</string>
+    <string name="mirror_connecting">Подключение…</string>
+    <string name="mirror_connected">Подключено, %1$d×%2$d · кадров: %3$d</string>
+    <string name="mirror_failed">Остановлено: %1$s</string>
+    <string name="mirror_needs_wifi">Сначала переключитесь на Wi-Fi и укажите адрес телефона</string>
+    <string name="action_start_mirror">Начать трансляцию</string>
+    <string name="action_stop_mirror">Остановить трансляцию</string>
+    <string name="action_open_mirror_window">Открыть в окне</string>
+    <string name="action_close_window">Закрыть</string>
+    <string name="action_key_back">Назад</string>
+    <string name="action_key_home">Домой</string>
+    <string name="action_key_recents">Недавние</string>
+    <string name="mirror_window_title">Экран телефона</string>
+    <string name="mirror_request_text">Телефон транслирует экран — нажмите, чтобы открыть здесь</string>
+    <string name="setup_control_hint">Нужна беспроводная отладка, сопряжённая один раз. Без неё трансляция остаётся только просмотром</string>
+    <string name="setup_control_shizuku">Shizuku работает — касания идут как настоящие</string>
+    <string name="setup_control_adb">Подключено — касания идут как настоящие</string>
+    <string name="action_pair_adb">Настроить прямой захват</string>
+    <string name="adb_pair_title">Сопряжение отладочного моста</string>
+    <string name="adb_pair_steps">Это позволяет шлему видеть и трогать телефон без запроса разрешения каждый раз. В параметрах разработчика откройте «Отладка по Wi-Fi» → «Подключение с помощью кода», не закрывайте этот экран и введите показанные шесть цифр.</string>
+    <string name="adb_pair_code">Код сопряжения</string>
+    <string name="adb_pair_notification">Введите шесть цифр прямо здесь — экран сопряжения закрывать не нужно</string>
+    <string name="adb_pair_confirm">Сопрячь</string>
+    <string name="adb_pair_working">Сопрягаю…</string>
+    <string name="adb_pair_ok">Сопряжено</string>
+    <string name="adb_pair_failed">Сопряжение не удалось. Проверьте код и что экран сопряжения ещё открыт.</string>
+
+    <string name="section_headset">Шлем</string>
+    <string name="headset_battery">Заряд %1$d%%</string>
+    <string name="headset_charging">На зарядке</string>
+    <string name="headset_in_use">Используется</string>
+    <string name="headset_unknown">Пока не сообщал</string>
+
+    <string name="section_about">О приложении</string>
+    <string name="about_version">Версия %1$s</string>
+    <string name="about_github">Исходный код на GitHub</string>
+    <string name="about_github_hint">README, инструкция по сборке и история версий</string>
+    <string name="about_issues">Сообщить о проблеме</string>
+    <string name="about_issues_hint">Полезнее всего — журнал из карточки «Статистика»</string>
+    <string name="about_support">Поддержать проект</string>
+    <string name="about_support_hint">Notivisor бесплатен, без рекламы и без аккаунтов</string>
+    <string name="about_privacy">Политика конфиденциальности</string>
+    <string name="about_privacy_hint">Коротко: данные не покидают ваши два устройства</string>
+
     <plurals name="apps_count">
         <item quantity="one">%1$d приложение</item>
         <item quantity="few">%1$d приложения</item>

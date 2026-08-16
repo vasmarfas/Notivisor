@@ -4,6 +4,9 @@
 
     <string name="channel_service">Connection status</string>
     <string name="channel_service_desc">Keeps the connection to the headset alive</string>
+    <string name="channel_calls">Calls</string>
+    <string name="channel_calls_desc">Incoming calls forwarded from the phone</string>
+    <string name="messaging_you">You</string>
     <string name="status_starting">Starting…</string>
 
     <string name="state_connected">Connected</string>
@@ -43,6 +46,7 @@
     <string name="action_done">Done</string>
     <string name="action_show_log">Show log</string>
     <string name="action_hide_log">Hide log</string>
+    <string name="action_share_log">Share log</string>
 
     <string name="pairing_title">Scan this in the headset</string>
     <string name="pairing_hint">Open the app in your headset, choose Scan QR and hold this screen in view. The code also sets the connection type, so nothing else needs matching by hand.</string>
@@ -96,6 +100,83 @@
     <string name="quit_message">Forwarding stops, the connection closes and the app leaves the background completely. Nothing will reach the headset until you open it again.</string>
     <string name="quit_confirm">Quit</string>
     <string name="quit_cancel">Cancel</string>
+    <string name="action_copy_code">Copy %1$s</string>
+    <string name="action_send_clipboard">Send clipboard</string>
+    <string name="action_find_headset">Find the headset</string>
+    <string name="action_send_text">Type and send text</string>
+
+    <string name="share_target">Open in headset</string>
+    <string name="share_sent">Sent to the headset</string>
+    <string name="share_no_link">No link in what you shared</string>
+
+    <string name="label_actions">Notification buttons</string>
+    <string name="label_actions_hint">Reply and act on notifications from inside the headset.</string>
+    <string name="label_codes">Offer to copy login codes</string>
+    <string name="label_codes_hint">A message that carries a one-time code gets a copy button in the headset.</string>
+    <string name="label_dnd">Silence this phone while connected</string>
+    <string name="label_dnd_hint">Do Not Disturb switches on while the headset has the notifications, and off again afterwards.</string>
+    <string name="label_dnd_permission">Needs permission to change Do Not Disturb</string>
+    <string name="label_presence">Only while the headset is worn</string>
+    <string name="label_presence_hint">Pause forwarding when the headset reports it is off your head or on a charger.</string>
+
+    <string name="type_on_phone_title">Type on your phone</string>
+    <string name="type_on_phone_hint">The headset is waiting for this</string>
+    <string name="type_on_phone_send">Send</string>
+    <string name="keyboard_label">Notivisor (type on phone)</string>
+    <string name="keyboard_waiting">Waiting for text from your phone…</string>
+    <string name="keyboard_sent">Sent</string>
+    <string name="channel_type_request">Type on phone</string>
+    <string name="type_request_text">The headset is waiting for text — tap to type</string>
+
+    <string name="channel_mirror">Screen mirror</string>
+    <string name="mirror_notification_text">Streaming this screen to the headset</string>
+    <string name="section_mirror">Screen mirror</string>
+    <string name="section_mirror_hint">Taps reach the phone once its control service is on</string>
+    <string name="section_mirror_hint_phone">Wi-Fi only; the headset connects to this phone directly</string>
+    <string name="mirror_idle">Not connected</string>
+    <string name="mirror_connecting">Connecting…</string>
+    <string name="mirror_connected">Connected, %1$d×%2$d · frames: %3$d</string>
+    <string name="mirror_failed">Stopped: %1$s</string>
+    <string name="mirror_needs_wifi">Switch to Wi-Fi and set the phone\'s address first</string>
+    <string name="action_start_mirror">Start mirroring</string>
+    <string name="action_stop_mirror">Stop mirroring</string>
+    <string name="action_open_mirror_window">Open in a window</string>
+    <string name="action_close_window">Close</string>
+    <string name="action_key_back">Back</string>
+    <string name="action_key_home">Home</string>
+    <string name="action_key_recents">Recents</string>
+    <string name="mirror_window_title">Phone screen</string>
+    <string name="mirror_request_text">The phone is sharing its screen — tap to open it here</string>
+    <string name="setup_control_hint">Needs wireless debugging paired once. Without it mirroring stays view-only</string>
+    <string name="setup_control_shizuku">Shizuku is running — taps go in as real touches</string>
+    <string name="setup_control_adb">Connected — taps go in as real touches</string>
+    <string name="action_pair_adb">Set up direct capture</string>
+    <string name="adb_pair_title">Pair the debug bridge</string>
+    <string name="adb_pair_steps">This is what lets the headset see and control this phone without a permission prompt each time. In Developer options open Wireless debugging → Pair device with pairing code, leave that screen open, and type the six digits it shows.</string>
+    <string name="adb_pair_code">Pairing code</string>
+    <string name="adb_pair_notification">Type the six digits here — no need to leave the pairing screen</string>
+    <string name="adb_pair_confirm">Pair</string>
+    <string name="adb_pair_working">Pairing…</string>
+    <string name="adb_pair_ok">Paired</string>
+    <string name="adb_pair_failed">That did not pair. Check the code and that the pairing screen is still open.</string>
+
+    <string name="section_headset">Headset</string>
+    <string name="headset_battery">Battery %1$d%%</string>
+    <string name="headset_charging">On charge</string>
+    <string name="headset_in_use">In use</string>
+    <string name="headset_unknown">Not reported yet</string>
+
+    <string name="section_about">About</string>
+    <string name="about_version">Version %1$s</string>
+    <string name="about_github">Source code on GitHub</string>
+    <string name="about_github_hint">README, build instructions and release notes</string>
+    <string name="about_issues">Report a problem</string>
+    <string name="about_issues_hint">The log from the Statistics card is the useful part</string>
+    <string name="about_support">Support the project</string>
+    <string name="about_support_hint">Notivisor is free, with no ads and no accounts</string>
+    <string name="about_privacy">Privacy policy</string>
+    <string name="about_privacy_hint">Short version: nothing leaves your two devices</string>
+
     <plurals name="apps_count">
         <item quantity="one">%1$d application</item>
         <item quantity="other">%1$d applications</item>

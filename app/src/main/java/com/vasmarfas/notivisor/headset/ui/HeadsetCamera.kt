@@ -9,12 +9,10 @@ import android.hardware.camera2.CameraManager
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.camera.camera2.interop.Camera2CameraInfo
-import androidx.camera.camera2.interop.ExperimentalCamera2Interop
 import androidx.camera.core.CameraSelector
 import androidx.core.content.ContextCompat
 import com.vasmarfas.notivisor.core.util.BridgeLog
 
-@OptIn(ExperimentalCamera2Interop::class)
 object HeadsetCamera {
 
     private const val SCOPE = "camera"
@@ -33,30 +31,39 @@ object HeadsetCamera {
         ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
                 PackageManager.PERMISSION_GRANTED
 
-    fun hasPassthrough(context: Context): Boolean = passthroughId(context) != null
+    fun hasPassthroughPermission(context: Context): Boolean =
+        ContextCompat.checkSelfPermission(context, HEADSET_CAMERA) ==
+                PackageManager.PERMISSION_GRANTED
 
-    fun passthroughId(context: Context): String? {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return null
+    fun hasAllPermissions(context: Context): Boolean =
+        hasBasicPermission(context) && hasPassthroughPermission(context)
+
+    fun passthroughIds(context: Context): List<String> {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return emptyList()
         val manager =
-            context.getSystemService(Context.CAMERA_SERVICE) as? CameraManager ?: return null
-        return cameraIds(context).firstOrNull { id ->
+            context.getSystemService(Context.CAMERA_SERVICE) as? CameraManager ?: return emptyList()
+        return cameraIds(context).filter { id ->
             runCatching {
                 manager.getCameraCharacteristics(id).get(vendorTag(TAG_SOURCE)) == PASSTHROUGH
+            }.onFailure {
+                BridgeLog.w(SCOPE, "vendor tag unreadable for camera $id: ${it.javaClass.simpleName} ${it.message}")
             }.getOrDefault(false)
         }
     }
+
+    fun hasPassthrough(context: Context): Boolean = passthroughIds(context).isNotEmpty()
 
     @RequiresApi(Build.VERSION_CODES.Q)
     private fun vendorTag(name: String) = CameraCharacteristics.Key(name, Byte::class.java)
 
     @SuppressLint("UnsafeOptInUsageError")
-    fun selector(context: Context): CameraSelector {
-        val target = passthroughId(context)
+    fun selector(context: Context, cameraId: String? = null): CameraSelector {
+        val target = cameraId ?: passthroughIds(context).firstOrNull()
         if (target == null) {
             BridgeLog.i(SCOPE, "no passthrough camera advertised, using the default rear camera")
             return CameraSelector.DEFAULT_BACK_CAMERA
         }
-        BridgeLog.i(SCOPE, "using passthrough camera $target")
+        BridgeLog.i(SCOPE, "using camera $target")
         return CameraSelector.Builder()
             .addCameraFilter { infos ->
                 infos.filter { Camera2CameraInfo.from(it).cameraId == target }.ifEmpty { infos }
@@ -78,10 +85,11 @@ object HeadsetCamera {
                 val position = if (readTags) characteristics.get(vendorTag(TAG_POSITION)) else null
                 "id=$id facing=$facing source=$source position=$position"
             }.getOrElse { "id=$id unreadable (${it.javaClass.simpleName})" }
-        } + " | passthrough=${passthroughId(context) ?: "none"}"
+        } + " | passthrough=${passthroughIds(context)} | " +
+                "camPerm=${hasBasicPermission(context)} headsetCamPerm=${hasPassthroughPermission(context)}"
     }
 
-    private fun cameraIds(context: Context): List<String> {
+    fun cameraIds(context: Context): List<String> {
         val manager =
             context.getSystemService(Context.CAMERA_SERVICE) as? CameraManager ?: return emptyList()
         return runCatching { manager.cameraIdList.toList() }.getOrDefault(emptyList())

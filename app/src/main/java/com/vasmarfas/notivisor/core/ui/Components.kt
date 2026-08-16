@@ -216,6 +216,18 @@ fun SettingRow(
 }
 
 @Composable
+fun InfoRow(title: String, detail: String, modifier: Modifier = Modifier) {
+    Column(modifier = modifier.fillMaxWidth()) {
+        Text(title, style = MaterialTheme.typography.bodyLarge)
+        Text(
+            detail,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
 fun ChecklistRow(
     done: Boolean,
     title: String,

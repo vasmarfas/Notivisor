@@ -15,6 +15,7 @@ import com.vasmarfas.notivisor.core.settings.BridgeSettings
 import com.vasmarfas.notivisor.core.settings.DeviceRole
 import com.vasmarfas.notivisor.core.ui.theme.NotivisorTheme
 import com.vasmarfas.notivisor.headset.ui.HeadsetScreen
+import com.vasmarfas.notivisor.headset.core.HeadsetBridge
 import com.vasmarfas.notivisor.phone.ui.BridgeScreen
 
 class MainActivity : ComponentActivity() {
@@ -43,5 +44,15 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        HeadsetBridge.uiVisible = true
+    }
+
+    override fun onPause() {
+        HeadsetBridge.uiVisible = false
+        super.onPause()
     }
 }

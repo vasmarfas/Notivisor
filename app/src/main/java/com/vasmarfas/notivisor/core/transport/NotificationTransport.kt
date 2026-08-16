@@ -41,6 +41,8 @@ data class TransportConfig(
 
     companion object {
         const val DEFAULT_TCP_PORT = 47820
+
+        const val SCREEN_STREAM_PORT = 47830
     }
 }
 
@@ -48,6 +50,8 @@ interface NotificationTransport {
     val kind: TransportKind
     val state: StateFlow<LinkState>
     val incoming: Flow<Envelope>
+
+    val maxFrameBytes: Int
 
     fun start()
     fun stop()

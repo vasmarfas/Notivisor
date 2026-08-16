@@ -24,8 +24,12 @@ object BleProtocol {
     private const val FINAL_BIT = 0x80
     private const val INDEX_MASK = 0x7F
 
+    private const val SAFE_CHUNKS = 120
+
     fun payloadSize(mtu: Int): Int =
         (minOf(mtu - ATT_OVERHEAD, MAX_ATTRIBUTE) - HEADER).coerceAtLeast(16)
+
+    fun maxMessageSize(mtu: Int): Int = payloadSize(mtu) * SAFE_CHUNKS
 
     fun chunk(line: String, mtu: Int): List<ByteArray> {
         val bytes = line.toByteArray(Charsets.UTF_8)

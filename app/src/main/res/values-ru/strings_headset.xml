@@ -29,9 +29,17 @@
 
     <string name="scan_title">Отсканируйте код с телефона</string>
     <string name="scan_hint">Откройте приложение на телефоне, нажмите «Подключить шлем» и наведите камеру на экран.</string>
-    <string name="scan_hint_virtual">Камеры шлема отключены, видно только виртуальное окружение. Выдайте разрешение заново, отметив камеры устройства, либо введите код вручную.</string>
+    <string name="scan_hint_virtual">Камеры шлема отключены, видно только виртуальное окружение. Разрешите камеры устройства ниже либо введите код вручную.</string>
+    <string name="scan_waiting_cameras">Камеры устройства разрешены, но пока не обнаружены — наденьте шлем, чтобы он их увидел.</string>
     <string name="scan_camera_error">Камера недоступна. Введите код вручную.</string>
     <string name="scan_unavailable">Этот шлем не даёт приложениям доступ к камере — введите код сопряжения ниже.</string>
+    <string name="action_grant_cameras">Разрешить камеры устройства</string>
+    <string name="action_open_settings">Открыть настройки</string>
+    <string name="scan_switch_camera">Сменить камеру (%1$d/%2$d)</string>
+    <string name="setup_paste">Текст с телефона</string>
+    <string name="setup_paste_manual">Приходит сюда уведомлением: нажмите, чтобы скопировать, затем вставьте в поле долгим нажатием. Настраивать ничего не нужно.</string>
+    <string name="setup_paste_keyboard">Клавиатура приложения включена — текст с телефона впечатывается в поле сам</string>
+    <string name="setup_paste_ready">Готово — текст с телефона вставляется прямо в поле ввода</string>
 
     <string name="stat_shown">показано</string>
     <string name="stat_received">получено</string>
@@ -39,6 +47,12 @@
 
     <string name="selftest_title">Проверка уведомлений</string>
     <string name="selftest_text">Опубликовано самим шлемом — телефон не участвовал.</string>
+
+    <string name="channel_copy">Текст с телефона</string>
+    <string name="copy_prompt_title">Текст с телефона</string>
+    <string name="copy_prompt_text">Нажмите, чтобы скопировать, затем вставьте в поле долгим нажатием</string>
+    <string name="copy_done">Скопировано — вставьте в поле долгим нажатием</string>
+    <string name="copy_failed">Не удалось записать в буфер обмена</string>
 
     <string name="quit_message_headset">Соединение закроется, уведомления перестанут приходить до следующего запуска приложения.</string>
 </resources>

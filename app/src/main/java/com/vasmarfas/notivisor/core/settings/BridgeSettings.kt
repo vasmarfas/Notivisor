@@ -4,6 +4,8 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
 import com.vasmarfas.notivisor.core.protocol.Pairing
+import com.vasmarfas.notivisor.core.protocol.PairingPayload
+import com.vasmarfas.notivisor.core.transport.LinkRole
 import com.vasmarfas.notivisor.core.transport.TransportConfig
 import com.vasmarfas.notivisor.core.transport.TransportKind
 import com.vasmarfas.notivisor.core.util.BridgeLog
@@ -84,6 +86,22 @@ class BridgeSettings private constructor(private val prefs: SharedPreferences) {
         get() = prefs.getBoolean(KEY_SHOW_SOURCE_APP, true)
         set(value) = put { putBoolean(KEY_SHOW_SOURCE_APP, value) }
 
+    var mirrorActions: Boolean
+        get() = prefs.getBoolean(KEY_MIRROR_ACTIONS, true)
+        set(value) = put { putBoolean(KEY_MIRROR_ACTIONS, value) }
+
+    var offerCodes: Boolean
+        get() = prefs.getBoolean(KEY_OFFER_CODES, true)
+        set(value) = put { putBoolean(KEY_OFFER_CODES, value) }
+
+    var autoDnd: Boolean
+        get() = prefs.getBoolean(KEY_AUTO_DND, false)
+        set(value) = put { putBoolean(KEY_AUTO_DND, value) }
+
+    var presenceGated: Boolean
+        get() = prefs.getBoolean(KEY_PRESENCE_GATED, false)
+        set(value) = put { putBoolean(KEY_PRESENCE_GATED, value) }
+
     var pairingCode: String?
         get() = prefs.getString(KEY_PAIRING_CODE, null)?.takeIf { Pairing.isValid(it) }
         set(value) {
@@ -122,7 +140,7 @@ class BridgeSettings private constructor(private val prefs: SharedPreferences) {
         return key
     }
 
-    fun apply(payload: com.vasmarfas.notivisor.core.protocol.PairingPayload) {
+    fun apply(payload: PairingPayload) {
         pairingCode = payload.code
         encryptionEnabled = true
         transportKind = payload.transport
@@ -132,7 +150,7 @@ class BridgeSettings private constructor(private val prefs: SharedPreferences) {
         payload.host?.let { tcpHost = it }
     }
 
-    fun pairingPayload(localHost: String?) = com.vasmarfas.notivisor.core.protocol.PairingPayload(
+    fun pairingPayload(localHost: String?) = PairingPayload(
         code = pairingCode ?: "",
         transport = transportKind,
         bleServerIsSource = bleServerIsSource,
@@ -141,7 +159,7 @@ class BridgeSettings private constructor(private val prefs: SharedPreferences) {
         showSourceApp = showSourceApp,
     )
 
-    fun transportConfig(role: com.vasmarfas.notivisor.core.transport.LinkRole) = TransportConfig(
+    fun transportConfig(role: LinkRole) = TransportConfig(
         kind = transportKind,
         role = role,
         bleServerIsSource = bleServerIsSource,
@@ -169,6 +187,10 @@ class BridgeSettings private constructor(private val prefs: SharedPreferences) {
         private const val KEY_HEADS_UP_INTERVAL = "heads_up_interval"
         private const val KEY_MIRROR_ONGOING = "mirror_ongoing"
         private const val KEY_SHOW_SOURCE_APP = "show_source_app"
+        private const val KEY_MIRROR_ACTIONS = "mirror_actions"
+        private const val KEY_OFFER_CODES = "offer_codes"
+        private const val KEY_AUTO_DND = "auto_dnd"
+        private const val KEY_PRESENCE_GATED = "presence_gated"
         private const val KEY_PAIRING_CODE = "pairing_code"
         private const val KEY_DERIVED_KEY = "derived_key"
         private const val KEY_ENCRYPTION = "encryption"

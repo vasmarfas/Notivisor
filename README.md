@@ -24,13 +24,33 @@ where nothing else can.
 ## Features
 
 - Every notification your phone shows, appearing over whatever you are running in the headset
+- **Reply without taking the headset off** — a message's reply box works from inside VR, and the
+  answer is sent by the phone as if you had typed it there
+- **The notification's own buttons** come with it: archive, mark read, snooze, whatever the app put
+  there
+- **Answer or decline a call** from the headset, on its own channel so it doesn't get lost
+- **One-time codes** get a copy button, so a login code arriving mid-session isn't a reason to stop
+- **Messages read as a conversation**, not five separate pop-ups, when the source app supports it
+- **See your phone's screen inside the headset**, view-only, over Wi-Fi — no ADB, no cable
+- **Type with your phone's keyboard instead of pointing at letters** — write on the phone,
+  autocorrect and swipe included, and it arrives in the headset ready to paste into any field. On
+  headsets that let you switch keyboards, focusing a field asks the phone for text by itself
+- **Control the headset's media from the phone**: play, pause, skip, volume
+- Dismiss in either place and it clears in both
 - Per-app control: mirror everything except what you uncheck, or only what you check
-- Dismissing on the phone clears it in the headset
+- Notification photos and sender avatars come across too, over Wi-Fi
+- App icons travel across once and are cached, so notifications look like themselves
+- Send the clipboard across, or share a link straight into the headset's browser
+- Silence the phone automatically while the headset has your notifications
+- Headset battery on the phone's screen, and a sound to find a headset you have put down
+- Only forward while the headset is actually worn, if you want it that way
+- A documented broadcast API for automation tools like Tasker
 - A separate notification channel per source app, so you can mute one app with the headset's own
   settings
 - Repeats filtered out, so unread counters and download progress don't flood you
 - Bluetooth LE by default, Wi-Fi if you prefer it
 - AES-256-GCM encryption keyed by a pairing code your two devices agree on
+- A quick settings tile to pause forwarding without opening the app
 - Quit that actually stops everything and leaves the background
 
 ## Requirements

@@ -1,6 +1,11 @@
 package com.vasmarfas.notivisor.headset.ui
 
 import android.content.Context
+import android.content.Intent
+import android.provider.Settings
+import androidx.activity.compose.LocalActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
@@ -18,7 +23,9 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -26,13 +33,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
 import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.BinaryBitmap
 import com.google.zxing.DecodeHintType
@@ -44,17 +52,54 @@ import com.vasmarfas.notivisor.R
 import com.vasmarfas.notivisor.core.util.BridgeLog
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import kotlinx.coroutines.delay
 
 @Composable
 fun QrScannerScreen(onResult: (String) -> Unit, onCancel: () -> Unit) {
     val context = LocalContext.current
+    val activity = LocalActivity.current
     val lifecycleOwner = LocalLifecycleOwner.current
     var error by remember { mutableStateOf<String?>(null) }
 
     val executor = remember { Executors.newSingleThreadExecutor() }
     DisposableEffect(Unit) { onDispose { executor.shutdown() } }
 
-    val passthroughMissing = remember { !HeadsetCamera.hasPassthrough(context) }
+    var hasHeadsetPermission by remember {
+        mutableStateOf(HeadsetCamera.hasPassthroughPermission(context))
+    }
+    var permissionAttempted by remember { mutableStateOf(false) }
+    val headsetPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        hasHeadsetPermission = granted
+        permissionAttempted = true
+    }
+
+    var allCameraIds by remember { mutableStateOf(HeadsetCamera.cameraIds(context)) }
+    var passthroughIds by remember { mutableStateOf(HeadsetCamera.passthroughIds(context)) }
+
+    LaunchedEffect(hasHeadsetPermission) {
+        while (hasHeadsetPermission && allCameraIds.isEmpty()) {
+            delay(700)
+            allCameraIds = HeadsetCamera.cameraIds(context)
+            passthroughIds = HeadsetCamera.passthroughIds(context)
+        }
+    }
+
+    val candidateIds = passthroughIds.ifEmpty { allCameraIds }
+
+    var selectedCameraId by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(candidateIds) {
+        if (selectedCameraId !in candidateIds) selectedCameraId = candidateIds.firstOrNull()
+    }
+    LaunchedEffect(selectedCameraId) { error = null }
+
+    val hintRes = when {
+        !hasHeadsetPermission -> R.string.scan_hint_virtual
+        allCameraIds.isEmpty() -> R.string.scan_waiting_cameras
+        else -> R.string.scan_hint
+    }
+    val hintIsWarning = !hasHeadsetPermission || allCameraIds.isEmpty()
 
     Column(
         modifier = Modifier
@@ -65,10 +110,10 @@ fun QrScannerScreen(onResult: (String) -> Unit, onCancel: () -> Unit) {
     ) {
         Text(stringResource(R.string.scan_title), style = MaterialTheme.typography.headlineSmall)
         Text(
-            stringResource(if (passthroughMissing) R.string.scan_hint_virtual else R.string.scan_hint),
+            stringResource(hintRes),
             style = MaterialTheme.typography.bodyLarge,
             textAlign = TextAlign.Center,
-            color = if (passthroughMissing) {
+            color = if (hintIsWarning) {
                 MaterialTheme.colorScheme.error
             } else {
                 MaterialTheme.colorScheme.onSurfaceVariant
@@ -82,14 +127,18 @@ fun QrScannerScreen(onResult: (String) -> Unit, onCancel: () -> Unit) {
                 .clip(RoundedCornerShape(20.dp)),
             contentAlignment = Alignment.Center,
         ) {
-            AndroidView(
-                modifier = Modifier.fillMaxWidth(),
-                factory = { ctx ->
-                    PreviewView(ctx).also { view ->
-                        bindCamera(ctx, view, lifecycleOwner, executor, onResult) { error = it }
-                    }
-                },
-            )
+            key(selectedCameraId) {
+                AndroidView(
+                    modifier = Modifier.fillMaxWidth(),
+                    factory = { ctx ->
+                        PreviewView(ctx).also { view ->
+                            bindCamera(ctx, view, lifecycleOwner, executor, selectedCameraId, onResult) {
+                                error = it
+                            }
+                        }
+                    },
+                )
+            }
             error?.let {
                 Text(
                     it,
@@ -100,10 +149,49 @@ fun QrScannerScreen(onResult: (String) -> Unit, onCancel: () -> Unit) {
             }
         }
 
+        if (!hasHeadsetPermission) {
+            val permanentlyDenied = permissionAttempted &&
+                    activity?.shouldShowRequestPermissionRationale(HeadsetCamera.HEADSET_CAMERA) == false
+            OutlinedButton(
+                onClick = {
+                    if (permanentlyDenied) {
+                        openAppSettings(context)
+                    } else {
+                        headsetPermissionLauncher.launch(HeadsetCamera.HEADSET_CAMERA)
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    stringResource(
+                        if (permanentlyDenied) R.string.action_open_settings else R.string.action_grant_cameras
+                    )
+                )
+            }
+        }
+
+        if (candidateIds.size > 1) {
+            val index = candidateIds.indexOf(selectedCameraId).coerceAtLeast(0)
+            OutlinedButton(
+                onClick = { selectedCameraId = candidateIds[(index + 1) % candidateIds.size] },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(stringResource(R.string.scan_switch_camera, index + 1, candidateIds.size))
+            }
+        }
+
         OutlinedButton(onClick = onCancel, modifier = Modifier.fillMaxWidth()) {
             Text(stringResource(R.string.action_back))
         }
     }
+}
+
+private fun openAppSettings(context: Context) {
+    context.startActivity(
+        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+            .setData("package:${context.packageName}".toUri())
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    )
 }
 
 private fun bindCamera(
@@ -111,6 +199,7 @@ private fun bindCamera(
     view: PreviewView,
     lifecycleOwner: LifecycleOwner,
     executor: ExecutorService,
+    cameraId: String?,
     onResult: (String) -> Unit,
     onError: (String) -> Unit,
 ) {
@@ -127,7 +216,7 @@ private fun bindCamera(
             provider.unbindAll()
             provider.bindToLifecycle(
                 lifecycleOwner,
-                HeadsetCamera.selector(context),
+                HeadsetCamera.selector(context, cameraId),
                 preview,
                 analysis
             )

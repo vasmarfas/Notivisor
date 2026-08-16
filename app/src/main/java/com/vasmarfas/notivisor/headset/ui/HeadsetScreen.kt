@@ -3,12 +3,17 @@ package com.vasmarfas.notivisor.headset.ui
 import android.Manifest
 import android.content.Context
 import android.os.Build
+import android.view.Surface
+import android.view.SurfaceHolder
+import android.view.SurfaceView
 import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -24,6 +29,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -31,20 +37,30 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.vasmarfas.notivisor.AppRole
 import com.vasmarfas.notivisor.R
+import com.vasmarfas.notivisor.RoleCard
+import com.vasmarfas.notivisor.core.control.ScrcpySession
+import com.vasmarfas.notivisor.core.protocol.Action
+import com.vasmarfas.notivisor.core.protocol.Envelope
 import com.vasmarfas.notivisor.core.protocol.Pairing
 import com.vasmarfas.notivisor.core.protocol.PairingPayload
+import com.vasmarfas.notivisor.core.settings.BridgeSettings
 import com.vasmarfas.notivisor.core.transport.LinkState
 import com.vasmarfas.notivisor.core.transport.TransportConfig
 import com.vasmarfas.notivisor.core.transport.TransportKind
 import com.vasmarfas.notivisor.core.transport.ble.BlePermissions
+import com.vasmarfas.notivisor.core.ui.AboutCard
 import com.vasmarfas.notivisor.core.ui.HealthTone
+import com.vasmarfas.notivisor.core.ui.InfoRow
 import com.vasmarfas.notivisor.core.ui.LogPanel
 import com.vasmarfas.notivisor.core.ui.SectionCard
 import com.vasmarfas.notivisor.core.ui.SegmentedChoice
@@ -53,6 +69,9 @@ import com.vasmarfas.notivisor.core.ui.StatRow
 import com.vasmarfas.notivisor.core.ui.StatusBanner
 import com.vasmarfas.notivisor.core.util.BridgeLog
 import com.vasmarfas.notivisor.headset.core.HeadsetBridge
+import com.vasmarfas.notivisor.headset.core.MirrorState
+import com.vasmarfas.notivisor.headset.core.ScreenReceiver
+import com.vasmarfas.notivisor.headset.service.RemoteKeyboardService
 
 @Composable
 fun HeadsetScreen() {
@@ -125,7 +144,7 @@ fun HeadsetScreen() {
             confirmButton = {
                 TextButton(onClick = {
                     confirmQuit = false
-                    activity?.let { com.vasmarfas.notivisor.AppRole.quit(it) }
+                    activity?.let { AppRole.quit(it) }
                 }) { Text(stringResource(R.string.quit_confirm)) }
             },
             dismissButton = {
@@ -172,7 +191,7 @@ fun HeadsetScreen() {
                 Button(
                     onClick = {
                         val missing = BlePermissions.missing(context, HeadsetCamera.permissions)
-                        if (HeadsetCamera.hasBasicPermission(context)) {
+                        if (missing.isEmpty()) {
                             scanning = true
                         } else {
                             cameraLauncher.launch(missing.toTypedArray())
@@ -318,6 +337,19 @@ fun HeadsetScreen() {
                 title = stringResource(R.string.section_notifications),
                 subtitle = stringResource(R.string.section_notifications_hint_headset),
             ) {
+
+                val pasteReady by ScrcpySession.controlReady.collectAsStateWithLifecycle()
+                val keyboardOn = remember { RemoteKeyboardService.isEnabled(context) }
+                InfoRow(
+                    title = stringResource(R.string.setup_paste),
+                    detail = stringResource(
+                        when {
+                            pasteReady -> R.string.setup_paste_ready
+                            keyboardOn -> R.string.setup_paste_keyboard
+                            else -> R.string.setup_paste_manual
+                        }
+                    ),
+                )
                 SettingRow(
                     title = stringResource(R.string.label_show_source),
                     subtitle = stringResource(R.string.label_show_source_hint),
@@ -367,10 +399,17 @@ fun HeadsetScreen() {
                     )
                 )
                 LogPanel(log, maxHeight = 260)
+                TextButton(onClick = { BridgeLog.share(context) }) {
+                    Text(stringResource(R.string.action_share_log))
+                }
             }
         }
 
-        item { com.vasmarfas.notivisor.RoleCard() }
+        item { ScreenMirrorSection(settings) }
+
+        item { RoleCard() }
+
+        item { AboutCard() }
 
         item {
             TextButton(onClick = { confirmQuit = true }, modifier = Modifier.fillMaxWidth()) {
@@ -400,4 +439,104 @@ private fun LinkState.headline(context: Context): String = context.getString(
     }
 )
 
+@Composable
+private fun ScreenMirrorSection(settings: BridgeSettings) {
+    val context = LocalContext.current
+    val receiver = remember { ScreenReceiver() }
+    val mirrorState by receiver.state.collectAsStateWithLifecycle()
+    var surface by remember { mutableStateOf<Surface?>(null) }
+
+    DisposableEffect(Unit) { onDispose { receiver.stop() } }
+
+    val host = settings.tcpHost
+    val connected = mirrorState is MirrorState.Connected
+
+    SectionCard(
+        title = stringResource(R.string.section_mirror),
+        subtitle = stringResource(R.string.section_mirror_hint),
+    ) {
+
+        val aspect = (mirrorState as? MirrorState.Connected)
+            ?.let { it.width.toFloat() / it.height }
+            ?: PREVIEW_ASPECT
+        Box(
+            modifier = Modifier.fillMaxWidth(),
+            contentAlignment = Alignment.Center,
+        ) {
+            AndroidView(
+                modifier = Modifier
+                    .height(260.dp)
+                    .aspectRatio(aspect)
+                    .clip(RoundedCornerShape(14.dp)),
+                factory = { ctx ->
+                    SurfaceView(ctx).apply {
+                        holder.addCallback(object : SurfaceHolder.Callback {
+                            override fun surfaceCreated(holder: SurfaceHolder) {
+                                surface = holder.surface
+                            }
+
+                            override fun surfaceChanged(
+                                holder: SurfaceHolder,
+                                format: Int,
+                                width: Int,
+                                height: Int,
+                            ) = Unit
+
+                            override fun surfaceDestroyed(holder: SurfaceHolder) {
+                                surface = null
+                            }
+                        })
+                    }
+                },
+            )
+        }
+        Text(
+            when (val state = mirrorState) {
+                is MirrorState.Idle -> stringResource(R.string.mirror_idle)
+                is MirrorState.Connecting -> stringResource(R.string.mirror_connecting)
+                is MirrorState.Connected ->
+                    stringResource(R.string.mirror_connected, state.width, state.height, state.frames)
+
+                is MirrorState.Failed -> stringResource(R.string.mirror_failed, state.reason)
+            },
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        if (host == null) {
+            Text(
+                stringResource(R.string.mirror_needs_wifi),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+            )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Button(
+                onClick = {
+                    val currentSurface = surface
+                    if (connected) {
+                        receiver.stop()
+                        HeadsetBridge.send(Envelope(action = Action.MIRROR_STOP))
+                    } else if (currentSurface != null && host != null) {
+
+                        HeadsetBridge.send(Envelope(action = Action.MIRROR_START))
+                        receiver.start(host, TransportConfig.SCREEN_STREAM_PORT, currentSurface)
+                    }
+                },
+                enabled = host != null && (connected || surface != null),
+            ) {
+                Text(stringResource(if (connected) R.string.action_stop_mirror else R.string.action_start_mirror))
+            }
+
+            OutlinedButton(
+                onClick = {
+                    receiver.stop()
+                    MirrorActivity.open(context)
+                },
+                enabled = host != null,
+            ) { Text(stringResource(R.string.action_open_mirror_window)) }
+        }
+    }
+}
+
+private const val PREVIEW_ASPECT = 0.46f
 private const val SCOPE = "ui"

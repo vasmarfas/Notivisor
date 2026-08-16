@@ -36,6 +36,25 @@ progress:
   request against the repository above isn't what forking is for. A fork sitting on GitHub with no
   active PR is not a problem by itself; publishing or promoting it as a standalone alternative is.
 
+## Third-party components
+
+This app ships a compiled copy of the **scrcpy** server (`app/src/main/assets/scrcpy-server`),
+which mirrors and controls the phone's screen without a MediaProjection prompt. scrcpy is
+Copyright (C) Romain Vimont and the scrcpy contributors, licensed under the
+[Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0); its source is at
+<https://github.com/Genymobile/scrcpy>. Because that file is redistributed as a binary, this
+attribution travels with every build.
+
+The app also links, unmodified and via Gradle, against AndroidX and Jetpack Compose, ZXing,
+Shizuku, dadb and Conscrypt, all under the Apache License 2.0, plus two libraries whose terms are
+worth stating exactly:
+
+- **libadb-android** — dual licensed GPL-3.0-or-later *or* Apache-2.0; used here under
+  **Apache-2.0**. Its upstream notes that it carries an LGPL dependency of its own.
+- **sun-security-android** — GPL-2.0 **with the Classpath Exception**, the same exception the
+  OpenJDK sources it repackages carry. That exception is what permits linking it into this app
+  without the GPL extending to the rest of the work.
+
 ## Name, icon and package ID
 
 The name **Notivisor**, the app icon, and the Android application ID `com.vasmarfas.notivisor`

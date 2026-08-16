@@ -1,5 +1,7 @@
 package com.vasmarfas.notivisor.core.util
 
+import android.content.Context
+import android.content.Intent
 import android.util.Log
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -21,6 +23,12 @@ object BridgeLog {
     fun d(scope: String, message: String) = write('D', scope, message)
     fun i(scope: String, message: String) = write('I', scope, message)
     fun w(scope: String, message: String) = write('W', scope, message)
+
+    fun redact(value: CharSequence?): String = when {
+        value == null -> "null"
+        value.isEmpty() -> "empty"
+        else -> "${value.length} chars"
+    }
 
     fun e(scope: String, message: String, error: Throwable? = null) {
         write(
@@ -46,4 +54,15 @@ object BridgeLog {
     }
 
     fun snapshot(): List<String> = synchronized(buffer) { buffer.toList() }
+
+    fun share(context: Context) {
+        val text = snapshot().joinToString("\n")
+        if (text.isEmpty()) return
+        val send = Intent(Intent.ACTION_SEND)
+            .setType("text/plain")
+            .putExtra(Intent.EXTRA_TEXT, text)
+        val chooser = Intent.createChooser(send, null).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        runCatching { context.startActivity(chooser) }
+            .onFailure { w("log", "nothing takes a shared log here: ${it.message}") }
+    }
 }

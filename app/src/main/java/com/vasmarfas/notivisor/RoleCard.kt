@@ -1,7 +1,9 @@
 package com.vasmarfas.notivisor
 
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -67,7 +69,7 @@ private fun RoleSwitchDialog(
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
 ) {
-    androidx.compose.material3.AlertDialog(
+    AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.role_switch_title)) },
         text = {
@@ -81,12 +83,12 @@ private fun RoleSwitchDialog(
             )
         },
         confirmButton = {
-            androidx.compose.material3.TextButton(onClick = onConfirm) {
+            TextButton(onClick = onConfirm) {
                 Text(stringResource(R.string.role_switch_confirm))
             }
         },
         dismissButton = {
-            androidx.compose.material3.TextButton(onClick = onDismiss) {
+            TextButton(onClick = onDismiss) {
                 Text(stringResource(R.string.quit_cancel))
             }
         },

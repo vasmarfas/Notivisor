@@ -8,6 +8,7 @@ import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothProfile
+import android.bluetooth.BluetoothStatusCodes
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanFilter
 import android.bluetooth.le.ScanResult
@@ -39,6 +40,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.time.Duration.Companion.milliseconds
 
 @SuppressLint("MissingPermission")
 class BleClientTransport(
@@ -74,6 +76,8 @@ class BleClientTransport(
 
     @Volatile
     private var mtu = BleProtocol.DEFAULT_MTU
+
+    override val maxFrameBytes: Int get() = BleProtocol.maxMessageSize(mtu)
 
     override fun start() {
         if (running) return
@@ -115,7 +119,7 @@ class BleClientTransport(
                     BridgeLog.w(SCOPE, "write rejected by the stack")
                     return@withLock false
                 }
-                val status = withTimeoutOrNull(WRITE_TIMEOUT_MS) { writeAcks.receive() }
+                val status = withTimeoutOrNull(WRITE_TIMEOUT_MS.milliseconds) { writeAcks.receive() }
                 if (status != BluetoothGatt.GATT_SUCCESS) {
                     BridgeLog.w(SCOPE, "write failed, status $status")
                     return@withLock false
@@ -133,7 +137,7 @@ class BleClientTransport(
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             connection.writeCharacteristic(
                 rx, value, BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
-            ) == android.bluetooth.BluetoothStatusCodes.SUCCESS
+            ) == BluetoothStatusCodes.SUCCESS
         } else {
             @Suppress("DEPRECATION")
             run {
@@ -225,6 +229,7 @@ class BleClientTransport(
             if (!running || gatt != null) return@postDelayed
             @Suppress("DEPRECATION")
             gatt = device.connectGatt(appContext, false, gattCallback, BluetoothDevice.TRANSPORT_LE)
+            if (gatt == null) scheduleRetry("connectGatt refused")
         }, CONNECT_SETTLE_MS)
     }
 

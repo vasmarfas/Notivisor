@@ -2,8 +2,10 @@ package com.vasmarfas.notivisor.phone.ui
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.media.projection.MediaProjectionManager
 import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings
@@ -42,6 +44,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -60,12 +63,18 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.vasmarfas.notivisor.AppRole
 import com.vasmarfas.notivisor.R
+import com.vasmarfas.notivisor.RoleCard
+import com.vasmarfas.notivisor.core.adb.AdbPairPrompt
+import com.vasmarfas.notivisor.core.control.ScrcpySession
+import com.vasmarfas.notivisor.core.protocol.MediaKey
 import com.vasmarfas.notivisor.core.protocol.Pairing
 import com.vasmarfas.notivisor.core.settings.FilterMode
 import com.vasmarfas.notivisor.core.transport.LinkState
 import com.vasmarfas.notivisor.core.transport.TransportKind
 import com.vasmarfas.notivisor.core.transport.ble.BlePermissions
+import com.vasmarfas.notivisor.core.ui.AboutCard
 import com.vasmarfas.notivisor.core.ui.ChecklistRow
 import com.vasmarfas.notivisor.core.ui.HealthTone
 import com.vasmarfas.notivisor.core.ui.LogPanel
@@ -75,9 +84,16 @@ import com.vasmarfas.notivisor.core.ui.SettingRow
 import com.vasmarfas.notivisor.core.ui.StatRow
 import com.vasmarfas.notivisor.core.ui.StatusBanner
 import com.vasmarfas.notivisor.core.util.BridgeLog
+import com.vasmarfas.notivisor.phone.core.DoNotDisturb
+import com.vasmarfas.notivisor.phone.core.HeadsetStatus
 import com.vasmarfas.notivisor.phone.core.PhoneBridge
 import com.vasmarfas.notivisor.phone.listener.NotifyListener
 import com.vasmarfas.notivisor.phone.service.BridgeService
+import com.vasmarfas.notivisor.phone.service.ScreenCaptureService
+import com.vasmarfas.notivisor.phone.service.ShizukuInput
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.net.Inet4Address
 import java.net.NetworkInterface
 import java.util.concurrent.TimeUnit
@@ -94,6 +110,7 @@ fun BridgeScreen() {
     val stats by PhoneBridge.link.stats.collectAsStateWithLifecycle()
     val counters by PhoneBridge.counters.collectAsStateWithLifecycle()
     val listenerConnected by PhoneBridge.listenerConnected.collectAsStateWithLifecycle()
+    val headset by PhoneBridge.headset.collectAsStateWithLifecycle()
     val log by BridgeLog.lines.collectAsStateWithLifecycle()
 
     var apps by remember { mutableStateOf<List<InstalledApp>>(emptyList()) }
@@ -131,6 +148,7 @@ fun BridgeScreen() {
         NotifyListener.isEnabled(context) && listenerConnected
     }
     val batteryReady = remember(permissionTick) { isIgnoringBattery(context) }
+    val dndReady = remember(permissionTick) { DoNotDisturb.granted(context) }
     val missingPermissions = remember(permissionTick) { missingPermissions(context) }
     val setupDone = listenerReady && batteryReady && missingPermissions.isEmpty()
 
@@ -142,7 +160,7 @@ fun BridgeScreen() {
             confirmButton = {
                 TextButton(onClick = {
                     confirmQuit = false
-                    activity?.let { com.vasmarfas.notivisor.AppRole.quit(it) }
+                    activity?.let { AppRole.quit(it) }
                 }) { Text(stringResource(R.string.quit_confirm)) }
             },
             dismissButton = {
@@ -321,12 +339,180 @@ fun BridgeScreen() {
                         checked = revision.let { settings.mirrorOngoing },
                     ) { settings.mirrorOngoing = it }
                     SettingRow(
+                        title = stringResource(R.string.label_actions),
+                        subtitle = stringResource(R.string.label_actions_hint),
+                        checked = revision.let { settings.mirrorActions },
+                    ) { settings.mirrorActions = it }
+                    SettingRow(
+                        title = stringResource(R.string.label_codes),
+                        subtitle = stringResource(R.string.label_codes_hint),
+                        checked = revision.let { settings.offerCodes },
+                    ) { settings.offerCodes = it }
+                    SettingRow(
+                        title = stringResource(R.string.label_dnd),
+                        subtitle = stringResource(
+                            if (dndReady) R.string.label_dnd_hint else R.string.label_dnd_permission
+                        ),
+                        checked = revision.let { settings.autoDnd },
+                    ) { value ->
+                        settings.autoDnd = value
+
+                        if (value && !DoNotDisturb.granted(context)) {
+                            permissionTick++
+                            context.startActivity(
+                                Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)
+                                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            )
+                        }
+                    }
+                    SettingRow(
+                        title = stringResource(R.string.label_presence),
+                        subtitle = stringResource(R.string.label_presence_hint),
+                        checked = revision.let { settings.presenceGated },
+                    ) { settings.presenceGated = it }
+                    SettingRow(
                         title = stringResource(R.string.label_enabled),
                         subtitle = stringResource(R.string.label_enabled_hint),
                         checked = revision.let { settings.enabled },
                     ) { value ->
                         settings.enabled = value
                         if (value) BridgeService.start(context) else PhoneBridge.stopLink()
+                    }
+                }
+            }
+
+            item {
+                SectionCard(title = stringResource(R.string.section_headset)) {
+                    InfoLine(
+                        stringResource(R.string.section_headset),
+                        headset.describe(context),
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        OutlinedButton(
+                            onClick = { PhoneBridge.sendClipboard() },
+                            enabled = linkState.isConnected,
+                            modifier = Modifier.weight(1f),
+                        ) { Text(stringResource(R.string.action_send_clipboard)) }
+                        OutlinedButton(
+                            onClick = { PhoneBridge.findHeadset() },
+                            enabled = linkState.isConnected,
+                            modifier = Modifier.weight(1f),
+                        ) { Text(stringResource(R.string.action_find_headset)) }
+                    }
+
+                    OutlinedButton(
+                        onClick = {
+                            context.startActivity(
+                                Intent(context, RemoteTypeActivity::class.java)
+                                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            )
+                        },
+                        enabled = linkState.isConnected,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) { Text(stringResource(R.string.action_send_text)) }
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        OutlinedButton(
+                            onClick = { PhoneBridge.changeHeadsetVolume(-1) },
+                            enabled = linkState.isConnected,
+                        ) { Text("−") }
+                        OutlinedButton(
+                            onClick = { PhoneBridge.pressMediaKey(MediaKey.PREVIOUS) },
+                            enabled = linkState.isConnected,
+                            modifier = Modifier.weight(1f),
+                        ) { Text("⏮") }
+                        OutlinedButton(
+                            onClick = { PhoneBridge.pressMediaKey(MediaKey.PLAY_PAUSE) },
+                            enabled = linkState.isConnected,
+                            modifier = Modifier.weight(1f),
+                        ) { Text("⏯") }
+                        OutlinedButton(
+                            onClick = { PhoneBridge.pressMediaKey(MediaKey.NEXT) },
+                            enabled = linkState.isConnected,
+                            modifier = Modifier.weight(1f),
+                        ) { Text("⏭") }
+                        OutlinedButton(
+                            onClick = { PhoneBridge.changeHeadsetVolume(1) },
+                            enabled = linkState.isConnected,
+                        ) { Text("+") }
+                    }
+                }
+            }
+
+            item {
+                val streaming by ScreenCaptureService.running.collectAsStateWithLifecycle()
+                val projectionLauncher = rememberLauncherForActivityResult(
+                    ActivityResultContracts.StartActivityForResult()
+                ) { result ->
+                    val data = result.data
+                    if (result.resultCode == Activity.RESULT_OK && data != null) {
+                        ScreenCaptureService.start(context, result.resultCode, data)
+                    }
+                }
+                val shizukuReady by ShizukuInput.available.collectAsStateWithLifecycle()
+                val controlReady by ScrcpySession.controlReady.collectAsStateWithLifecycle()
+                var starting by remember { mutableStateOf(false) }
+                val scope = rememberCoroutineScope()
+                LaunchedEffect(Unit) { ShizukuInput.connect(context) }
+
+                SectionCard(
+                    title = stringResource(R.string.section_mirror),
+                    subtitle = stringResource(R.string.section_mirror_hint_phone),
+                ) {
+                    Button(
+                        enabled = !starting,
+                        onClick = {
+                            if (streaming) {
+                                ScreenCaptureService.stop(context)
+                                PhoneBridge.sendMirrorState(false)
+                                return@Button
+                            }
+
+                            PhoneBridge.sendMirrorState(true)
+
+                            starting = true
+                            scope.launch(Dispatchers.IO) {
+                                val viaScrcpy = ScrcpySession.isAvailable(context)
+                                withContext(Dispatchers.Main) {
+                                    if (viaScrcpy) {
+                                        ScreenCaptureService.startWithScrcpy(context)
+                                    } else {
+                                        val manager = context.getSystemService(
+                                            MediaProjectionManager::class.java
+                                        )
+                                        projectionLauncher.launch(manager.createScreenCaptureIntent())
+                                    }
+                                    starting = false
+                                }
+                            }
+                        },
+                    ) {
+                        Text(
+                            stringResource(
+                                when {
+                                    streaming -> R.string.action_stop_mirror
+                                    starting -> R.string.mirror_connecting
+                                    else -> R.string.action_start_mirror
+                                }
+                            )
+                        )
+                    }
+                    Text(
+                        stringResource(
+                            when {
+                                controlReady -> R.string.setup_control_adb
+                                shizukuReady -> R.string.setup_control_shizuku
+                                else -> R.string.setup_control_hint
+                            }
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    if (!controlReady) {
+
+                        TextButton(onClick = {
+                            AdbPairPrompt.show(context)
+                            AdbPairPrompt.openPairingScreen(context)
+                        }) { Text(stringResource(R.string.action_pair_adb)) }
                     }
                 }
             }
@@ -358,16 +544,23 @@ fun BridgeScreen() {
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
-                    TextButton(onClick = { showLog = !showLog }) {
-                        Text(
-                            stringResource(if (showLog) R.string.action_hide_log else R.string.action_show_log)
-                        )
+                    Row {
+                        TextButton(onClick = { showLog = !showLog }) {
+                            Text(
+                                stringResource(if (showLog) R.string.action_hide_log else R.string.action_show_log)
+                            )
+                        }
+                        TextButton(onClick = { BridgeLog.share(context) }) {
+                            Text(stringResource(R.string.action_share_log))
+                        }
                     }
                     if (showLog) LogPanel(log)
                 }
             }
 
-            item { com.vasmarfas.notivisor.RoleCard() }
+            item { RoleCard() }
+
+            item { AboutCard() }
 
             item {
                 TextButton(
@@ -560,13 +753,21 @@ private fun missingPermissions(context: Context): List<String> {
     return BlePermissions.missing(context, wanted)
 }
 
+private fun HeadsetStatus.describe(context: Context): String {
+    if (updatedAt == 0L) return context.getString(R.string.headset_unknown)
+    return listOfNotNull(
+        battery?.let { context.getString(R.string.headset_battery, it) },
+        worn?.let {
+            context.getString(if (it) R.string.headset_in_use else R.string.headset_charging)
+        },
+    ).joinToString(" · ").ifEmpty { context.getString(R.string.headset_unknown) }
+}
+
 private fun isIgnoringBattery(context: Context): Boolean {
     val power = context.getSystemService(Context.POWER_SERVICE) as PowerManager
     return power.isIgnoringBatteryOptimizations(context.packageName)
 }
 
-// Notivisor is a background companion app for a paired Bluetooth device, one of the use cases
-// Play's battery-optimization policy allows the direct one-tap dialog for.
 @SuppressLint("BatteryLife")
 private fun requestIgnoreBattery(context: Context) {
     val request = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)

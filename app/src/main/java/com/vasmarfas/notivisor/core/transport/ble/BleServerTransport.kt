@@ -10,6 +10,7 @@ import android.bluetooth.BluetoothGattServerCallback
 import android.bluetooth.BluetoothGattService
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothProfile
+import android.bluetooth.BluetoothStatusCodes
 import android.bluetooth.le.AdvertiseCallback
 import android.bluetooth.le.AdvertiseData
 import android.bluetooth.le.AdvertiseSettings
@@ -73,6 +74,8 @@ class BleServerTransport(
 
     @Volatile
     private var mtu = BleProtocol.DEFAULT_MTU
+
+    override val maxFrameBytes: Int get() = BleProtocol.maxMessageSize(mtu)
 
     private var advertising = false
 
@@ -184,7 +187,7 @@ class BleServerTransport(
                 tx,
                 false,
                 value
-            ) == android.bluetooth.BluetoothStatusCodes.SUCCESS
+            ) == BluetoothStatusCodes.SUCCESS
         } else {
             @Suppress("DEPRECATION")
             tx.value = value

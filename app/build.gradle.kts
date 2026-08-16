@@ -11,8 +11,8 @@ android {
         applicationId = "com.vasmarfas.notivisor"
         minSdk = 26
         targetSdk = 37
-        versionCode = 1
-        versionName = "1.0.1"
+        versionCode = 2
+        versionName = "1.1.0"
     }
 
     buildTypes {
@@ -29,6 +29,7 @@ android {
 
     buildFeatures {
         compose = true
+        aidl = true
     }
 
     compileOptions {
@@ -43,7 +44,12 @@ android {
         disable += setOf(
             "GradleDependency",
             "AndroidGradlePluginVersion",
-            "ObsoleteLintCustomCheck"
+            "ObsoleteLintCustomCheck",
+            // Fires inside libadb-android, which we cannot edit. Android's own wireless debugging
+            // authenticates by pairing code and authorised key rather than by a CA chain, so its
+            // TLS trust manager is empty by design; there is no certificate authority in the
+            // protocol to check against. The connection never leaves loopback either.
+            "TrustAllX509TrustManager"
         )
     }
 }
@@ -64,4 +70,12 @@ dependencies {
     implementation(libs.androidx.camera.camera2)
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.view)
+
+    implementation(libs.shizuku.api)
+    implementation(libs.shizuku.provider)
+
+    implementation(libs.dadb)
+    implementation(libs.libadb.android)
+    implementation(libs.sun.security.android)
+    implementation(libs.conscrypt.android)
 }

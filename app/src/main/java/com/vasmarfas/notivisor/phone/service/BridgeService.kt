@@ -13,6 +13,7 @@ import androidx.lifecycle.lifecycleScope
 import com.vasmarfas.notivisor.MainActivity
 import com.vasmarfas.notivisor.R
 import com.vasmarfas.notivisor.core.util.BridgeLog
+import com.vasmarfas.notivisor.phone.core.DoNotDisturb
 import com.vasmarfas.notivisor.phone.core.PhoneBridge
 import com.vasmarfas.notivisor.phone.listener.NotifyListener
 import kotlinx.coroutines.delay
@@ -33,7 +34,12 @@ class BridgeService : LifecycleService() {
         lifecycleScope.launch {
             PhoneBridge.link.state.collectLatest { state ->
                 updateNotification(state.describe())
+                applyDoNotDisturb(state.isConnected)
+                PhoneBridge.notifyStateChanged(this@BridgeService)
             }
+        }
+        lifecycleScope.launch {
+            PhoneBridge.link.incoming.collect { PhoneBridge.onEnvelope(it) }
         }
         lifecycleScope.launch { listenerWatchdog() }
         BridgeLog.i(SCOPE, "service created")
@@ -57,8 +63,17 @@ class BridgeService : LifecycleService() {
     override fun onDestroy() {
         BridgeLog.w(SCOPE, "service destroyed")
         PhoneBridge.stopLink()
+        DoNotDisturb.release(this)
         clearNotification()
         super.onDestroy()
+    }
+
+    private fun applyDoNotDisturb(connected: Boolean) {
+        if (!PhoneBridge.settings.autoDnd) {
+            DoNotDisturb.release(this)
+            return
+        }
+        if (connected) DoNotDisturb.engage(this) else DoNotDisturb.release(this)
     }
 
     private fun clearNotification() {

@@ -33,7 +33,10 @@ class ReceiverService : LifecycleService() {
             HeadsetBridge.link.incoming.collect { HeadsetBridge.onEnvelope(it) }
         }
         lifecycleScope.launch {
-            HeadsetBridge.link.state.collectLatest { updateNotification(it.describe()) }
+            HeadsetBridge.link.state.collectLatest { state ->
+                updateNotification(state.describe())
+                if (state.isConnected) HeadsetBridge.reportStatus()
+            }
         }
         lifecycleScope.launch { heartbeat() }
         BridgeLog.i(SCOPE, "service created")
@@ -66,6 +69,7 @@ class ReceiverService : LifecycleService() {
         val startedAt = System.currentTimeMillis()
         while (lifecycleScope.isActive) {
             delay(HEARTBEAT_MS)
+            HeadsetBridge.reportStatus()
             val counters = HeadsetBridge.publisher.counters.value
             val stats = HeadsetBridge.link.stats.value
             BridgeLog.i(

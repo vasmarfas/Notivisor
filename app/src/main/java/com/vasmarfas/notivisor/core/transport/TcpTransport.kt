@@ -50,6 +50,8 @@ class TcpTransport(
     private val writeMutex = Mutex()
     private val nsd = NsdHelper(appContext)
 
+    override val maxFrameBytes = 1 shl 20
+
     private var job: Job? = null
     private var serverSocket: ServerSocket? = null
 

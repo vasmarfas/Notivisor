@@ -27,6 +27,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import java.util.concurrent.atomic.AtomicLong
 
 data class LinkStats(
     val sent: Long = 0,
@@ -65,7 +66,7 @@ class LinkManager(
 
     private var transport: NotificationTransport? = null
     private var jobs = mutableListOf<Job>()
-    private var seq = 0L
+    private val seq = AtomicLong(0)
 
     @Volatile
     private var lastTrafficAt = 0L
@@ -147,7 +148,9 @@ class LinkManager(
                     _stats.value = _stats.value.copy(dropped = _stats.value.dropped + 1)
                     BridgeLog.w(SCOPE, "queue full, dropped the oldest message")
                 }
-                queue.addLast(Pending(envelope.copy(seq = ++seq), System.currentTimeMillis()))
+                queue.addLast(
+                    Pending(envelope.copy(seq = seq.incrementAndGet()), System.currentTimeMillis())
+                )
                 _stats.value = _stats.value.copy(queued = queue.size)
             }
             wakeup.trySend(Unit)
@@ -156,6 +159,21 @@ class LinkManager(
 
     fun sendDirect(envelope: Envelope) {
         scope.launch { transport?.send(envelope) }
+    }
+
+    fun sendIfItFits(envelope: Envelope, what: String) {
+        scope.launch {
+            val active = transport ?: return@launch
+            val size = codec.encode(envelope).toByteArray(Charsets.UTF_8).size
+            if (size > active.maxFrameBytes) {
+                BridgeLog.w(
+                    SCOPE,
+                    "$what needs $size B, the link carries ${active.maxFrameBytes} B — skipped"
+                )
+                return@launch
+            }
+            active.send(envelope)
+        }
     }
 
     private fun purgeLocked() {
@@ -218,7 +236,7 @@ class LinkManager(
 
             if (role == LinkRole.SOURCE) {
                 pendingPingAt = System.currentTimeMillis()
-                val ok = transport?.send(Envelope.ping(++seq)) ?: false
+                val ok = transport?.send(Envelope.ping(seq.incrementAndGet())) ?: false
                 if (!ok) {
                     restart("keepalive could not be written")
                     continue
@@ -228,7 +246,7 @@ class LinkManager(
             val silence = System.currentTimeMillis() - lastTrafficAt
             if (lastTrafficAt == 0L || silence <= SILENCE_LIMIT_MS) continue
 
-            val probeSent = transport?.send(Envelope.ping(++seq)) ?: false
+            val probeSent = transport?.send(Envelope.ping(seq.incrementAndGet())) ?: false
             if (!probeSent) {
                 restart("silent for ${silence / 1000} s and the probe could not be written")
                 continue
