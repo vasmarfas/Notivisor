@@ -11,7 +11,7 @@ android {
         applicationId = "com.vasmarfas.notivisor"
         minSdk = 26
         targetSdk = 37
-        versionCode = 2
+        versionCode = 3
         versionName = "1.1.0"
     }
 
