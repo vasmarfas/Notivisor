@@ -163,8 +163,8 @@
     <string name="channel_cast">Вид из шлема</string>
     <string name="cast_notification_text">Шлем транслируется на телефон</string>
     <string name="section_cast">Вид из шлема</string>
-    <string name="section_cast_hint_phone">Посмотреть, что видно в шлеме; нужен общий Wi-Fi</string>
-    <string name="section_cast_hint_headset">Отдаёт картинку шлема на телефон по Wi-Fi</string>
+    <string name="section_cast_hint_phone">Посмотреть и послушать, что происходит в шлеме; нужен общий Wi-Fi</string>
+    <string name="section_cast_hint_headset">Отдаёт картинку и звук шлема на телефон по Wi-Fi</string>
     <string name="cast_idle">Трансляция не идёт</string>
     <string name="cast_waiting">Ждём шлем…</string>
     <string name="cast_needs_wifi">Сначала переключитесь на Wi-Fi и укажите адрес телефона</string>
@@ -186,6 +186,8 @@
     <string name="proximity_unknown">Только Quest — состояние появится, когда шлем отчитается</string>
     <string name="cast_window_title">Вид из шлема</string>
     <string name="cast_request_text">Шлем транслирует — нажмите, чтобы смотреть здесь</string>
+    <string name="action_mute">Выключить звук</string>
+    <string name="action_unmute">Включить звук</string>
 
     <string name="setup_control_hint">Нужна беспроводная отладка, сопряжённая один раз. Без неё трансляция остаётся только просмотром</string>
     <string name="setup_control_shizuku">Shizuku работает — касания идут как настоящие</string>

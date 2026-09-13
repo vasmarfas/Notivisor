@@ -29,6 +29,7 @@ import com.vasmarfas.notivisor.phone.core.CastPrompt
 import com.vasmarfas.notivisor.phone.core.DoNotDisturb
 import com.vasmarfas.notivisor.phone.core.PhoneBridge
 import com.vasmarfas.notivisor.phone.listener.NotifyListener
+import com.vasmarfas.notivisor.phone.ui.CastActivity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -377,7 +378,10 @@ class DebugReceiver : BroadcastReceiver() {
                 }
             }
 
-            "watch" -> {
+            "watch" -> if (intent.getBooleanExtra("open", false)) {
+                CastActivity.open(context)
+                BridgeLog.i(SCOPE, "WATCH viewer opened, needs the app in the foreground")
+            } else {
                 CastPrompt.show(context)
                 BridgeLog.i(SCOPE, "WATCH prompt posted, tap it to open the viewer")
             }

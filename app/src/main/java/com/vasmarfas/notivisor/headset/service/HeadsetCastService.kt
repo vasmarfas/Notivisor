@@ -12,6 +12,7 @@ import android.os.Build
 import android.os.IBinder
 import com.vasmarfas.notivisor.MainActivity
 import com.vasmarfas.notivisor.R
+import com.vasmarfas.notivisor.core.control.AudioSession
 import com.vasmarfas.notivisor.core.control.CapturePacket
 import com.vasmarfas.notivisor.core.control.CastSource
 import com.vasmarfas.notivisor.core.control.MagicCastSession
@@ -31,8 +32,10 @@ import java.nio.ByteBuffer
 class HeadsetCastService : Service() {
 
     private var worker: Thread? = null
+    private var audio: Thread? = null
     private var source = CastSource.MAGIC
     private var announced: CapturePacket.Size? = null
+    private val writeLock = Any()
 
     @Volatile
     private var socket: Socket? = null
@@ -125,16 +128,19 @@ class HeadsetCastService : Service() {
                         return
                     }
                     announced = packet
-                    viewer.getOutputStream().apply {
-                        write(
-                            ByteBuffer.allocate(8)
-                                .putInt(packet.width)
-                                .putInt(packet.height)
-                                .array()
-                        )
-                        flush()
+                    synchronized(writeLock) {
+                        viewer.getOutputStream().apply {
+                            write(
+                                ByteBuffer.allocate(8)
+                                    .putInt(packet.width)
+                                    .putInt(packet.height)
+                                    .array()
+                            )
+                            flush()
+                        }
                     }
                     BridgeLog.i(SCOPE, "casting at ${packet.width}x${packet.height} via $source")
+                    startAudio(viewer)
                 }
 
                 is CapturePacket.Frame -> {
@@ -147,11 +153,28 @@ class HeadsetCastService : Service() {
         }
     }
 
-    private fun send(viewer: Socket, bytes: ByteArray) {
-        val out = viewer.getOutputStream()
-        out.write(ByteBuffer.allocate(4).putInt(bytes.size).array())
-        out.write(bytes)
-        out.flush()
+    private fun startAudio(viewer: Socket) {
+        audio = Thread {
+            if (!AudioSession.start(applicationContext)) {
+                BridgeLog.i(SCOPE, "casting without sound")
+                return@Thread
+            }
+            while (!stopping && socket === viewer && !viewer.isClosed) {
+                val chunk = AudioSession.read() ?: break
+                runCatching { send(viewer, chunk, sound = true) }.getOrElse { return@Thread }
+            }
+            AudioSession.close()
+        }.apply { isDaemon = true; name = "cast-audio"; start() }
+    }
+
+    private fun send(viewer: Socket, bytes: ByteArray, sound: Boolean = false) {
+        val marked = if (sound) bytes.size or SOUND_MARK else bytes.size
+        synchronized(writeLock) {
+            val out = viewer.getOutputStream()
+            out.write(ByteBuffer.allocate(4).putInt(marked).array())
+            out.write(bytes)
+            out.flush()
+        }
     }
 
     private fun stopEverything() {
@@ -167,10 +190,13 @@ class HeadsetCastService : Service() {
         socket = null
         worker?.interrupt()
         worker = null
+        audio?.interrupt()
+        audio = null
 
         Thread {
             MagicCastSession.close()
             ScrcpySession.close()
+            AudioSession.close()
         }.apply { isDaemon = true }.start()
         BridgeLog.i(SCOPE, "casting stopped")
     }
@@ -221,6 +247,7 @@ class HeadsetCastService : Service() {
         private const val SCRCPY_MAX_SIZE = 1600
         private const val CONNECT_ATTEMPTS = 30
         private const val CONNECT_RETRY_MS = 500L
+        private const val SOUND_MARK = Int.MIN_VALUE
 
         const val ACTION_STOP = "com.vasmarfas.notivisor.cast.STOP"
 

@@ -20,6 +20,7 @@ import com.vasmarfas.notivisor.core.protocol.ScreenControl
 import com.vasmarfas.notivisor.core.transport.TransportConfig
 import com.vasmarfas.notivisor.core.transport.TransportKind
 import com.vasmarfas.notivisor.core.util.BridgeLog
+import com.vasmarfas.notivisor.headset.core.Alarm
 import com.vasmarfas.notivisor.headset.core.HeadsetBridge
 import com.vasmarfas.notivisor.headset.core.HeadsetInput
 import com.vasmarfas.notivisor.headset.core.HeadsetOverlay
@@ -148,6 +149,8 @@ class DebugReceiver : BroadcastReceiver() {
                 intent.getStringExtra("title") ?: "Notivisor",
                 intent.getStringExtra("text") ?: "Overlay test",
             )
+
+            "alarm" -> Alarm.sound(context)
 
             "report" -> HeadsetBridge.reportStatus()
 

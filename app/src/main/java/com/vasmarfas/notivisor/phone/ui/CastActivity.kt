@@ -12,6 +12,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -83,11 +84,17 @@ private fun CastWindow(onClose: () -> Unit) {
     val receiver = remember { ScreenReceiver() }
     val castState by receiver.state.collectAsStateWithLifecycle()
     var surface by remember { mutableStateOf<Surface?>(null) }
+    var sound by remember { mutableStateOf(true) }
 
     DisposableEffect(Unit) { onDispose { receiver.stop() } }
 
     DisposableEffect(surface) {
         surface?.let { receiver.listen(TransportConfig.CAST_STREAM_PORT, it) }
+        onDispose { }
+    }
+
+    DisposableEffect(sound) {
+        receiver.sound = sound
         onDispose { }
     }
 
@@ -147,13 +154,25 @@ private fun CastWindow(onClose: () -> Unit) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
-        OutlinedButton(
-            onClick = {
-                receiver.stop()
-                CastPrompt.dismiss(context)
-                onClose()
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            OutlinedButton(onClick = { sound = !sound }) {
+                Text(
+                    stringResource(
+                        if (sound) R.string.action_mute else R.string.action_unmute
+                    )
+                )
             }
-        ) { Text(stringResource(R.string.action_close_window)) }
+            OutlinedButton(
+                onClick = {
+                    receiver.stop()
+                    CastPrompt.dismiss(context)
+                    onClose()
+                }
+            ) { Text(stringResource(R.string.action_close_window)) }
+        }
     }
 }
 

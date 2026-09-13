@@ -29,6 +29,7 @@ class ScreenReceiver {
     @Volatile
     private var server: ServerSocket? = null
     private var decoder: MediaCodec? = null
+    private var audio: AudioPlayer? = null
     private var thread: Thread? = null
     private val sender = Executors.newSingleThreadExecutor { task ->
         Thread(task, "mirror-input").apply { isDaemon = true }
@@ -42,6 +43,13 @@ class ScreenReceiver {
 
     private val _state = MutableStateFlow<MirrorState>(MirrorState.Idle)
     val state: StateFlow<MirrorState> = _state.asStateFlow()
+
+    @Volatile
+    var sound: Boolean = false
+        set(value) {
+            field = value
+            if (!value) releaseAudio()
+        }
 
     fun start(host: String, port: Int, surface: Surface) {
         stop()
@@ -77,6 +85,7 @@ class ScreenReceiver {
             runCatching { decode(client, surface) }
                 .onFailure { BridgeLog.i(SCOPE, "stream ended: ${it.message}") }
             releaseDecoder()
+            releaseAudio()
             runCatching { client.close() }
             socket = null
             if (listening) _state.value = MirrorState.Connecting
@@ -119,8 +128,14 @@ class ScreenReceiver {
 
         val info = MediaCodec.BufferInfo()
         while (socket != null) {
-            val length = input.readInt()
-            val bytes = ByteArray(length)
+            val marked = input.readInt()
+            if (marked < 0) {
+                val chunk = ByteArray(marked and Int.MAX_VALUE)
+                input.readFully(chunk)
+                play(chunk)
+                continue
+            }
+            val bytes = ByteArray(marked)
             input.readFully(bytes)
 
             var inputIndex = codec.dequeueInputBuffer(DEQUEUE_TIMEOUT_US)
@@ -164,11 +179,18 @@ class ScreenReceiver {
         }
     }
 
+    private fun play(chunk: ByteArray) {
+        if (!sound) return
+        val player = audio ?: AudioPlayer().takeIf { it.start() }?.also { audio = it } ?: return
+        player.write(chunk)
+    }
+
     fun stop() {
         listening = false
         thread?.interrupt()
         thread = null
         releaseDecoder()
+        releaseAudio()
         runCatching { server?.close() }
         server = null
         runCatching { socket?.close() }
@@ -181,6 +203,12 @@ class ScreenReceiver {
         decoder = null
         runCatching { current?.stop() }
         runCatching { current?.release() }
+    }
+
+    private fun releaseAudio() {
+        val current = audio
+        audio = null
+        current?.stop()
     }
 
     private fun isCodecConfig(bytes: ByteArray): Boolean {

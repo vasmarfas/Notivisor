@@ -165,8 +165,8 @@
     <string name="channel_cast">Headset view</string>
     <string name="cast_notification_text">Streaming this headset to the phone</string>
     <string name="section_cast">Headset view</string>
-    <string name="section_cast_hint_phone">Watch what the headset sees; needs the same Wi-Fi</string>
-    <string name="section_cast_hint_headset">Sends this headset\'s view to the phone over Wi-Fi</string>
+    <string name="section_cast_hint_phone">Watch and hear what the headset does; needs the same Wi-Fi</string>
+    <string name="section_cast_hint_headset">Sends this headset\'s view and sound to the phone over Wi-Fi</string>
     <string name="cast_idle">Not casting</string>
     <string name="cast_waiting">Waiting for the headset…</string>
     <string name="cast_needs_wifi">Switch to Wi-Fi and pair the phone\'s address first</string>
@@ -188,6 +188,8 @@
     <string name="proximity_unknown">Quest only — the state appears once the headset reports in</string>
     <string name="cast_window_title">Headset view</string>
     <string name="cast_request_text">The headset is casting — tap to watch it here</string>
+    <string name="action_mute">Mute</string>
+    <string name="action_unmute">Sound on</string>
 
     <string name="setup_control_hint">Needs wireless debugging paired once. Without it mirroring stays view-only</string>
     <string name="setup_control_shizuku">Shizuku is running — taps go in as real touches</string>

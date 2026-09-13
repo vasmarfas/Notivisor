@@ -10,21 +10,14 @@ import dadb.Dadb
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import java.io.File
 import java.io.InputStream
 import java.io.OutputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
-import java.util.zip.ZipInputStream
-import kotlin.random.Random
 
 object ScrcpySession {
 
     private const val SCOPE = "scrcpy"
-    private const val ASSET = "scrcpy-server"
-    private const val REMOTE_PATH = "/data/local/tmp/notivisor-scrcpy-server.jar"
-    private const val SOCKET_RETRIES = 40
-    private const val SOCKET_RETRY_MS = 200L
     private const val MAX_FRAME_BYTES = 12_000_000
 
     private val _controlReady = MutableStateFlow(false)
@@ -51,7 +44,7 @@ object ScrcpySession {
             BridgeLog.w(SCOPE, "no reachable adb port; wireless debugging off or unpaired")
             return false
         }
-        val version = detectVersion(context) ?: run {
+        val version = ScrcpyServer.version(context) ?: run {
             BridgeLog.w(SCOPE, "could not read the bundled server's version")
             return false
         }
@@ -60,33 +53,16 @@ object ScrcpySession {
         val connection = Dadb.create("127.0.0.1", port, AdbIdentity.keyPair(context))
         dadb = connection
 
-        val staged = File(context.cacheDir, ASSET).apply {
-            context.assets.open(ASSET).use { input -> outputStream().use(input::copyTo) }
-        }
-        connection.push(staged, REMOTE_PATH)
-
-        val scid = "%08x".format(Random.nextInt() and 0x7FFFFFFF)
-        val socketName = "scrcpy_$scid"
-        val command = buildString {
-            append("shell:CLASSPATH=$REMOTE_PATH app_process / com.genymobile.scrcpy.Server ")
-            append("$version scid=$scid log_level=info ")
-            append("video=$wantVideo audio=false control=true tunnel_forward=true cleanup=false ")
-            append("send_dummy_byte=false")
+        val scid = ScrcpyServer.scid()
+        val options = buildString {
+            append("video=$wantVideo audio=false control=true")
             if (wantVideo) append(" video_codec=h264 max_size=$maxSize video_bit_rate=$VIDEO_BIT_RATE")
         }
         BridgeLog.i(SCOPE, "starting server $version (video=$wantVideo)")
-        shell = connection.open(command).also { stream ->
-            Thread({
-                runCatching {
-                    stream.source.inputStream().bufferedReader().forEachLine {
-                        BridgeLog.i(SCOPE, "[server] $it")
-                    }
-                }
-            }, "scrcpy-log").apply { isDaemon = true }.start()
-        }
+        shell = ScrcpyServer.launch(context, connection, version, scid, options)
 
-        if (wantVideo) videoStream = openSocket(connection, socketName) ?: return false
-        controlStream = openSocket(connection, socketName) ?: return false
+        if (wantVideo) videoStream = ScrcpyServer.open(connection, scid) ?: return false
+        controlStream = ScrcpyServer.open(connection, scid) ?: return false
         controlOut = controlStream!!.sink.outputStream()
         if (wantVideo) {
             videoIn = videoStream!!.source.inputStream()
@@ -99,15 +75,6 @@ object ScrcpySession {
         BridgeLog.w(SCOPE, "session failed: ${it.message}")
         close()
         false
-    }
-
-    private fun openSocket(connection: Dadb, name: String): AdbStream? {
-        repeat(SOCKET_RETRIES) {
-            runCatching { connection.open("localabstract:$name") }.getOrNull()?.let { return it }
-            Thread.sleep(SOCKET_RETRY_MS)
-        }
-        BridgeLog.w(SCOPE, "socket '$name' never appeared")
-        return null
     }
 
     private fun readVideoHeader(input: InputStream) {
@@ -219,47 +186,6 @@ object ScrcpySession {
             if (count < 0) throw java.io.EOFException("stream ended after $read of ${buffer.size} B")
             read += count
         }
-    }
-
-    private fun detectVersion(context: Context): String? = runCatching {
-        ZipInputStream(context.assets.open(ASSET)).use { zip ->
-            var entry = zip.nextEntry
-            while (entry != null) {
-                when (entry.name) {
-                    "META-INF/MANIFEST.MF" -> zip.bufferedReader().readLines()
-                        .find { it.startsWith("Scrcpy-Version:") }
-                        ?.substringAfter(":")
-                        ?.trim()
-                        ?.let { return@runCatching it }
-
-                    "AndroidManifest.xml" -> scanForSemver(zip.readBytes())
-                        ?.let { return@runCatching it }
-                }
-                entry = zip.nextEntry
-            }
-        }
-        null
-    }.getOrNull()
-
-    private fun scanForSemver(data: ByteArray): String? {
-        val semver = Regex("^\\d+\\.\\d+(\\.\\d+)*$")
-        var i = 0
-        while (i < data.size - 4) {
-            if (data[i].toInt() in 0x30..0x39 && data[i + 1] == 0.toByte()) {
-                val text = StringBuilder()
-                var j = i
-                while (j + 1 < data.size && data[j + 1] == 0.toByte()) {
-                    val c = (data[j].toInt() and 0xFF).toChar()
-                    if (!c.isDigit() && c != '.') break
-                    text.append(c)
-                    j += 2
-                }
-                val candidate = text.toString()
-                if (candidate.contains('.') && semver.matches(candidate)) return candidate
-            }
-            i++
-        }
-        return null
     }
 
     private const val VIDEO_BIT_RATE = 8_000_000
