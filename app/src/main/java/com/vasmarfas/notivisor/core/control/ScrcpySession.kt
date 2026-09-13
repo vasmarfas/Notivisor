@@ -27,11 +27,6 @@ object ScrcpySession {
     private const val SOCKET_RETRY_MS = 200L
     private const val MAX_FRAME_BYTES = 12_000_000
 
-    sealed interface Packet {
-        data class Size(val width: Int, val height: Int) : Packet
-        data class Frame(val data: ByteArray, val isConfig: Boolean) : Packet
-    }
-
     private val _controlReady = MutableStateFlow(false)
     val controlReady: StateFlow<Boolean> = _controlReady.asStateFlow()
 
@@ -50,7 +45,7 @@ object ScrcpySession {
     fun isAvailable(context: Context): Boolean = AdbConnection.resolvePort(context) != null
 
     @Synchronized
-    fun start(context: Context, wantVideo: Boolean): Boolean = runCatching {
+    fun start(context: Context, wantVideo: Boolean, maxSize: Int = 0): Boolean = runCatching {
         close()
         val port = AdbConnection.resolvePort(context) ?: run {
             BridgeLog.w(SCOPE, "no reachable adb port; wireless debugging off or unpaired")
@@ -77,7 +72,7 @@ object ScrcpySession {
             append("$version scid=$scid log_level=info ")
             append("video=$wantVideo audio=false control=true tunnel_forward=true cleanup=false ")
             append("send_dummy_byte=false")
-            if (wantVideo) append(" video_codec=h264 max_size=0 video_bit_rate=$VIDEO_BIT_RATE")
+            if (wantVideo) append(" video_codec=h264 max_size=$maxSize video_bit_rate=$VIDEO_BIT_RATE")
         }
         BridgeLog.i(SCOPE, "starting server $version (video=$wantVideo)")
         shell = connection.open(command).also { stream ->
@@ -124,7 +119,7 @@ object ScrcpySession {
         BridgeLog.i(SCOPE, "device '$name', codec header ${codecMeta.size} B")
     }
 
-    fun readPacket(): Packet? {
+    fun readPacket(): CapturePacket? {
         val input = videoIn ?: return null
         val header = ByteArray(12)
         return runCatching {
@@ -133,7 +128,7 @@ object ScrcpySession {
             val length = ByteBuffer.wrap(header, 8, 4).order(ByteOrder.BIG_ENDIAN).int
 
             if (major >= 4 && (ptsAndFlags and Long.MIN_VALUE) != 0L) {
-                return@runCatching Packet.Size((ptsAndFlags and 0xFFFFFFFFL).toInt(), length)
+                return@runCatching CapturePacket.Size((ptsAndFlags and 0xFFFFFFFFL).toInt(), length)
             }
             if (length <= 0 || length > MAX_FRAME_BYTES) {
                 BridgeLog.w(SCOPE, "bogus frame length $length, stream is out of sync")
@@ -141,7 +136,7 @@ object ScrcpySession {
             }
             val configMask = if (major >= 4) (1L shl 62) else Long.MIN_VALUE
             val payload = ByteArray(length).also { readFully(input, it) }
-            Packet.Frame(payload, (ptsAndFlags and configMask) != 0L)
+            CapturePacket.Frame(payload, (ptsAndFlags and configMask) != 0L)
         }.getOrNull()
     }
 

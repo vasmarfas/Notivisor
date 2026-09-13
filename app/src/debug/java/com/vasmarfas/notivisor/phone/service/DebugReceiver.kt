@@ -25,6 +25,7 @@ import com.vasmarfas.notivisor.core.protocol.RemoteAction
 import com.vasmarfas.notivisor.core.protocol.ScreenControl
 import com.vasmarfas.notivisor.core.transport.TransportKind
 import com.vasmarfas.notivisor.core.util.BridgeLog
+import com.vasmarfas.notivisor.phone.core.CastPrompt
 import com.vasmarfas.notivisor.phone.core.DoNotDisturb
 import com.vasmarfas.notivisor.phone.core.PhoneBridge
 import com.vasmarfas.notivisor.phone.listener.NotifyListener
@@ -374,6 +375,11 @@ class DebugReceiver : BroadcastReceiver() {
                     ScreenCaptureService.startWithScrcpy(context)
                     BridgeLog.i(SCOPE, "MIRROR start requested (scrcpy path)")
                 }
+            }
+
+            "watch" -> {
+                CastPrompt.show(context)
+                BridgeLog.i(SCOPE, "WATCH prompt posted, tap it to open the viewer")
             }
 
             "adbcheck" -> Thread {

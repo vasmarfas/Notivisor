@@ -22,6 +22,7 @@ import android.os.IBinder
 import android.os.Looper
 import com.vasmarfas.notivisor.MainActivity
 import com.vasmarfas.notivisor.R
+import com.vasmarfas.notivisor.core.control.CapturePacket
 import com.vasmarfas.notivisor.core.protocol.ScreenControl
 import com.vasmarfas.notivisor.core.transport.TransportConfig
 import com.vasmarfas.notivisor.core.util.BridgeLog
@@ -95,11 +96,11 @@ class ScreenCaptureService : Service() {
             return
         }
 
-        var size: ScrcpySession.Packet.Size? = null
+        var size: CapturePacket.Size? = null
         while (size == null && client === socket) {
             when (val packet = ScrcpySession.readPacket()) {
-                is ScrcpySession.Packet.Size -> size = packet
-                is ScrcpySession.Packet.Frame -> Unit
+                is CapturePacket.Size -> size = packet
+                is CapturePacket.Frame -> Unit
                 null -> {
                     BridgeLog.w(SCOPE, "scrcpy stream ended before announcing a size")
                     return
@@ -122,9 +123,9 @@ class ScreenCaptureService : Service() {
 
         while (client === socket && !socket.isClosed) {
             when (val packet = ScrcpySession.readPacket()) {
-                is ScrcpySession.Packet.Frame -> sendFrame(packet.data)
+                is CapturePacket.Frame -> sendFrame(packet.data)
 
-                is ScrcpySession.Packet.Size -> if (
+                is CapturePacket.Size -> if (
                     packet.width != announced.width || packet.height != announced.height
                 ) {
                     BridgeLog.i(SCOPE, "screen resized, dropping the viewer to re-handshake")

@@ -33,6 +33,7 @@ data class MirrorCounters(
 data class HeadsetStatus(
     val battery: Int? = null,
     val worn: Boolean? = null,
+    val proximitySensorOff: Boolean? = null,
     val updatedAt: Long = 0L,
 )
 
@@ -178,6 +179,7 @@ object PhoneBridge {
                 _headset.value = HeadsetStatus(
                     battery = envelope.battery,
                     worn = envelope.worn,
+                    proximitySensorOff = envelope.prox ?: _headset.value.proximitySensorOff,
                     updatedAt = System.currentTimeMillis(),
                 )
             }
@@ -201,6 +203,23 @@ object PhoneBridge {
             Action.MIRROR_STOP -> {
                 ScreenCaptureService.stop(appContext)
                 BridgeLog.i(SCOPE, "headset asked to stop mirroring")
+            }
+
+            Action.CAST_START -> {
+                CastPrompt.show(appContext)
+                BridgeLog.i(SCOPE, "the headset is casting, offering the viewer")
+            }
+
+            Action.CAST_STOP -> {
+                CastPrompt.dismiss(appContext)
+                _castError.value = envelope.text
+                onCastStop?.invoke()
+                BridgeLog.i(SCOPE, "the headset stopped casting: ${envelope.text ?: "no reason"}")
+            }
+
+            Action.PROXIMITY -> {
+                _headset.value = _headset.value.copy(proximitySensorOff = envelope.prox)
+                BridgeLog.i(SCOPE, "headset proximity sensor off = ${envelope.prox}")
             }
 
             else -> BridgeLog.d(SCOPE, "ignoring '${envelope.action}' from the headset")
@@ -253,6 +272,28 @@ object PhoneBridge {
     fun changeHeadsetVolume(direction: Int) {
         if (!initialised) return
         link.sendDirect(Envelope(action = Action.VOLUME, idx = direction))
+    }
+
+    var onCastStop: (() -> Unit)? = null
+
+    private val _castError = MutableStateFlow<String?>(null)
+    val castError: StateFlow<String?> = _castError.asStateFlow()
+
+    fun sendCastState(on: Boolean) {
+        if (!initialised) return
+        if (on) _castError.value = null
+        link.sendDirect(
+            Envelope(
+                action = if (on) Action.CAST_START else Action.CAST_STOP,
+                data = if (on) settings.castSource.name else null,
+                ts = System.currentTimeMillis(),
+            )
+        )
+    }
+
+    fun setHeadsetProximity(off: Boolean) {
+        if (!initialised) return
+        link.sendDirect(Envelope(action = Action.PROXIMITY, prox = off))
     }
 
     fun sendMirrorState(on: Boolean) {

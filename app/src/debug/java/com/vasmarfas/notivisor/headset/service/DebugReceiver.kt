@@ -1,12 +1,18 @@
 package com.vasmarfas.notivisor.headset.service
 
+import android.app.NotificationManager
 import android.app.RemoteInput
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.graphics.ImageFormat
 import android.media.ImageReader
+import android.os.Build
 import android.os.Bundle
+import com.vasmarfas.notivisor.core.control.CapturePacket
+import com.vasmarfas.notivisor.core.control.CastSource
+import com.vasmarfas.notivisor.core.control.MagicCastSession
+import com.vasmarfas.notivisor.core.control.ScreenReceiver
 import com.vasmarfas.notivisor.core.protocol.Action
 import com.vasmarfas.notivisor.core.protocol.Envelope
 import com.vasmarfas.notivisor.core.protocol.Pairing
@@ -16,7 +22,8 @@ import com.vasmarfas.notivisor.core.transport.TransportKind
 import com.vasmarfas.notivisor.core.util.BridgeLog
 import com.vasmarfas.notivisor.headset.core.HeadsetBridge
 import com.vasmarfas.notivisor.headset.core.HeadsetInput
-import com.vasmarfas.notivisor.headset.core.ScreenReceiver
+import com.vasmarfas.notivisor.headset.core.HeadsetOverlay
+import com.vasmarfas.notivisor.headset.core.HeadsetProximity
 import com.vasmarfas.notivisor.headset.ui.HeadsetCamera
 
 class DebugReceiver : BroadcastReceiver() {
@@ -102,6 +109,46 @@ class DebugReceiver : BroadcastReceiver() {
 
             "selftest" -> HeadsetBridge.selfTest()
 
+            "notifcheck" -> Thread {
+                val manager = context.getSystemService(NotificationManager::class.java)
+                BridgeLog.i(
+                    SCOPE,
+                    "NOTIFCHECK brand=${Build.BRAND} manufacturer=${Build.MANUFACTURER} " +
+                            "model=${Build.MODEL} device=${Build.DEVICE} sdk=${Build.VERSION.SDK_INT}"
+                )
+                BridgeLog.i(SCOPE, "NOTIFCHECK fingerprint=${Build.FINGERPRINT}")
+                BridgeLog.i(
+                    SCOPE,
+                    "NOTIFCHECK enabled=${manager.areNotificationsEnabled()} " +
+                            "channels=${manager.notificationChannels.size} " +
+                            "overlay=${HeadsetOverlay.granted(context)}"
+                )
+                manager.notificationChannels.forEach {
+                    BridgeLog.i(SCOPE, "NOTIFCHECK channel ${it.id} importance=${it.importance}")
+                }
+
+                HeadsetBridge.selfTest()
+                Thread.sleep(CHECK_SETTLE_MS)
+
+                val active = runCatching { manager.activeNotifications.map { it.id } }
+                    .getOrDefault(emptyList())
+                BridgeLog.i(
+                    SCOPE,
+                    "NOTIFCHECK after selftest: shade=${HeadsetBridge.publisher.shade.value} " +
+                            "active=${active.size} ids=$active"
+                )
+            }.apply { isDaemon = true }.start()
+
+            "toasttest" -> HeadsetBridge.publisher.overlay.toast(
+                intent.getStringExtra("title") ?: "Notivisor",
+                intent.getStringExtra("text") ?: "Toast test",
+            )
+
+            "overlaytest" -> HeadsetBridge.publisher.overlay.show(
+                intent.getStringExtra("title") ?: "Notivisor",
+                intent.getStringExtra("text") ?: "Overlay test",
+            )
+
             "report" -> HeadsetBridge.reportStatus()
 
             "mirrortest" -> {
@@ -155,6 +202,43 @@ class DebugReceiver : BroadcastReceiver() {
                 }
                 BridgeLog.i(SCOPE, "mirrortap: sent")
             }
+
+            "cast" -> if (intent.getBooleanExtra("stop", false)) {
+                HeadsetCastService.stop(context)
+                HeadsetBridge.send(Envelope(action = Action.CAST_STOP))
+            } else {
+                val source = CastSource.parse(intent.getStringExtra("source"))
+                HeadsetBridge.send(Envelope(action = Action.CAST_START, data = source.name))
+                HeadsetCastService.start(context, source)
+            }
+
+            "prox" -> Thread {
+                val off = HeadsetProximity.set(context, intent.getBooleanExtra("off", true))
+                BridgeLog.i(SCOPE, "PROX sensorOff=$off")
+            }.apply { isDaemon = true }.start()
+
+            "castprobe" -> Thread {
+                if (!MagicCastSession.start(context)) {
+                    BridgeLog.w(SCOPE, "castprobe: casting service never came up")
+                    return@Thread
+                }
+                var frames = 0
+                var config = 0
+                val deadline = System.currentTimeMillis() + PROBE_MS
+                while (System.currentTimeMillis() < deadline) {
+                    when (val packet = MagicCastSession.readPacket()) {
+                        is CapturePacket.Size ->
+                            BridgeLog.i(SCOPE, "castprobe: ${packet.width}x${packet.height}")
+
+                        is CapturePacket.Frame ->
+                            if (packet.isConfig) config++ else frames++
+
+                        null -> break
+                    }
+                }
+                MagicCastSession.close()
+                BridgeLog.i(SCOPE, "castprobe: $frames frames, $config parameter sets")
+            }.apply { isDaemon = true }.start()
 
             "textreq" -> {
                 HeadsetBridge.onTextReceived = { text ->
@@ -214,6 +298,8 @@ class DebugReceiver : BroadcastReceiver() {
 
     private companion object {
         const val SCOPE = "debug"
+        const val PROBE_MS = 8_000L
+        const val CHECK_SETTLE_MS = 3_000L
 
         @Volatile
         var testReceiver: ScreenReceiver? = null

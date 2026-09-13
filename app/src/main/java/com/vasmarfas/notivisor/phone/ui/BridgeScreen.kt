@@ -67,6 +67,7 @@ import com.vasmarfas.notivisor.AppRole
 import com.vasmarfas.notivisor.R
 import com.vasmarfas.notivisor.RoleCard
 import com.vasmarfas.notivisor.core.adb.AdbPairPrompt
+import com.vasmarfas.notivisor.core.control.CastSource
 import com.vasmarfas.notivisor.core.control.ScrcpySession
 import com.vasmarfas.notivisor.core.protocol.MediaKey
 import com.vasmarfas.notivisor.core.protocol.Pairing
@@ -111,6 +112,7 @@ fun BridgeScreen() {
     val counters by PhoneBridge.counters.collectAsStateWithLifecycle()
     val listenerConnected by PhoneBridge.listenerConnected.collectAsStateWithLifecycle()
     val headset by PhoneBridge.headset.collectAsStateWithLifecycle()
+    val castError by PhoneBridge.castError.collectAsStateWithLifecycle()
     val log by BridgeLog.lines.collectAsStateWithLifecycle()
 
     var apps by remember { mutableStateOf<List<InstalledApp>>(emptyList()) }
@@ -513,6 +515,74 @@ fun BridgeScreen() {
                             AdbPairPrompt.show(context)
                             AdbPairPrompt.openPairingScreen(context)
                         }) { Text(stringResource(R.string.action_pair_adb)) }
+                    }
+                }
+            }
+
+            item {
+                SectionCard(
+                    title = stringResource(R.string.section_cast),
+                    subtitle = stringResource(R.string.section_cast_hint_phone),
+                ) {
+                    val source = revision.let { settings.castSource }
+                    val sensorOff = headset.proximitySensorOff
+
+                    SegmentedChoice(
+                        options = listOf(CastSource.MAGIC, CastSource.SCRCPY),
+                        selected = source,
+                        label = {
+                            stringResource(
+                                if (it == CastSource.MAGIC) R.string.cast_source_magic
+                                else R.string.cast_source_scrcpy
+                            )
+                        },
+                        onSelect = { settings.castSource = it },
+                    )
+                    Text(
+                        stringResource(
+                            if (source == CastSource.MAGIC) R.string.cast_source_magic_hint
+                            else R.string.cast_source_scrcpy_hint
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Button(
+                            onClick = { CastActivity.open(context) },
+                            enabled = linkState.isConnected,
+                        ) { Text(stringResource(R.string.action_watch_headset)) }
+                        OutlinedButton(
+                            onClick = { PhoneBridge.setHeadsetProximity(sensorOff != true) },
+                            enabled = linkState.isConnected,
+                        ) {
+                            Text(
+                                stringResource(
+                                    if (sensorOff == true) R.string.action_enable_proximity
+                                    else R.string.action_disable_proximity
+                                )
+                            )
+                        }
+                    }
+                    Text(
+                        stringResource(
+                            when (sensorOff) {
+                                true -> R.string.proximity_off
+                                false -> R.string.proximity_on
+                                null -> R.string.proximity_unknown
+                            }
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    castError?.let { reason ->
+                        Text(
+                            stringResource(R.string.cast_failed, reason),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                        )
                     }
                 }
             }

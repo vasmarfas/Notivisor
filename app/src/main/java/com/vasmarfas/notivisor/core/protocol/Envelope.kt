@@ -45,6 +45,12 @@ object Action {
     const val MIRROR_START = "mirror_start"
 
     const val MIRROR_STOP = "mirror_stop"
+
+    const val CAST_START = "cast_start"
+
+    const val CAST_STOP = "cast_stop"
+
+    const val PROXIMITY = "proximity"
 }
 
 object MediaKey {
@@ -88,6 +94,7 @@ data class Envelope(
     val data: String? = null,
     val battery: Int? = null,
     val worn: Boolean? = null,
+    val prox: Boolean? = null,
     val avatar: String? = null,
     val picture: String? = null,
 ) {
@@ -114,6 +121,7 @@ data class Envelope(
         data?.let { o.put("data", it) }
         battery?.let { o.put("bat", it) }
         worn?.let { o.put("worn", it) }
+        prox?.let { o.put("prox", it) }
         avatar?.let { o.put("av", it) }
         picture?.let { o.put("pic", it) }
         if (actions.isNotEmpty()) {
@@ -172,6 +180,7 @@ data class Envelope(
                 data = o.optStringOrNull("data"),
                 battery = o.optIntOrNull("bat"),
                 worn = if (o.has("worn")) o.optBoolean("worn") else null,
+                prox = if (o.has("prox")) o.optBoolean("prox") else null,
                 avatar = o.optStringOrNull("av"),
                 picture = o.optStringOrNull("pic"),
             )

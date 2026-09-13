@@ -2,7 +2,9 @@ package com.vasmarfas.notivisor.headset.ui
 
 import android.Manifest
 import android.content.Context
+import android.content.Intent
 import android.os.Build
+import android.provider.Settings
 import android.view.Surface
 import android.view.SurfaceHolder
 import android.view.SurfaceView
@@ -44,16 +46,20 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vasmarfas.notivisor.AppRole
 import com.vasmarfas.notivisor.R
 import com.vasmarfas.notivisor.RoleCard
+import com.vasmarfas.notivisor.core.control.MirrorState
 import com.vasmarfas.notivisor.core.control.ScrcpySession
+import com.vasmarfas.notivisor.core.control.ScreenReceiver
 import com.vasmarfas.notivisor.core.protocol.Action
 import com.vasmarfas.notivisor.core.protocol.Envelope
 import com.vasmarfas.notivisor.core.protocol.Pairing
 import com.vasmarfas.notivisor.core.protocol.PairingPayload
 import com.vasmarfas.notivisor.core.settings.BridgeSettings
+import com.vasmarfas.notivisor.core.settings.OverlayMode
 import com.vasmarfas.notivisor.core.transport.LinkState
 import com.vasmarfas.notivisor.core.transport.TransportConfig
 import com.vasmarfas.notivisor.core.transport.TransportKind
@@ -69,8 +75,9 @@ import com.vasmarfas.notivisor.core.ui.StatRow
 import com.vasmarfas.notivisor.core.ui.StatusBanner
 import com.vasmarfas.notivisor.core.util.BridgeLog
 import com.vasmarfas.notivisor.headset.core.HeadsetBridge
-import com.vasmarfas.notivisor.headset.core.MirrorState
-import com.vasmarfas.notivisor.headset.core.ScreenReceiver
+import com.vasmarfas.notivisor.headset.core.HeadsetOverlay
+import com.vasmarfas.notivisor.headset.core.ShadeState
+import com.vasmarfas.notivisor.headset.service.HeadsetCastService
 import com.vasmarfas.notivisor.headset.service.RemoteKeyboardService
 
 @Composable
@@ -205,6 +212,8 @@ fun HeadsetScreen() {
                 ) { Text(stringResource(R.string.action_test_notification)) }
             }
         }
+
+        item { ShadeSection(settings) }
 
         item {
             SectionCard(
@@ -407,6 +416,8 @@ fun HeadsetScreen() {
 
         item { ScreenMirrorSection(settings) }
 
+        item { HeadsetCastSection(settings) }
+
         item { RoleCard() }
 
         item { AboutCard() }
@@ -535,6 +546,119 @@ private fun ScreenMirrorSection(settings: BridgeSettings) {
                 enabled = host != null,
             ) { Text(stringResource(R.string.action_open_mirror_window)) }
         }
+    }
+}
+
+@Composable
+private fun ShadeSection(settings: BridgeSettings) {
+    val context = LocalContext.current
+    val shade by HeadsetBridge.publisher.shade.collectAsStateWithLifecycle()
+    var overlayOn by remember { mutableStateOf(settings.overlayMode) }
+    var canDraw by remember { mutableStateOf(HeadsetOverlay.granted(context)) }
+    val overlayPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { canDraw = HeadsetOverlay.granted(context) }
+
+    SectionCard(
+        title = stringResource(R.string.section_shade),
+        subtitle = stringResource(
+            when (shade) {
+                ShadeState.UNKNOWN -> R.string.shade_unknown
+                ShadeState.OK -> R.string.shade_ok
+                ShadeState.APP_BLOCKED -> R.string.shade_blocked_app
+                ShadeState.CHANNEL_BLOCKED -> R.string.shade_blocked_channel
+                ShadeState.DROPPED -> R.string.shade_dropped
+            }
+        ),
+    ) {
+        if (shade == ShadeState.APP_BLOCKED || shade == ShadeState.CHANNEL_BLOCKED) {
+            Button(onClick = {
+                val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                    .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                val opened = runCatching { context.startActivity(intent) }
+                if (opened.isFailure) {
+                    BridgeLog.w(SCOPE, "no notification settings screen on this headset")
+                }
+            }) { Text(stringResource(R.string.action_open_notification_settings)) }
+        }
+
+        Text(
+            stringResource(R.string.setting_overlay_hint),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        SegmentedChoice(
+            options = listOf(OverlayMode.NONE, OverlayMode.PANEL, OverlayMode.TOAST),
+            selected = overlayOn,
+            label = {
+                stringResource(
+                    when (it) {
+                        OverlayMode.NONE -> R.string.overlay_off
+                        OverlayMode.PANEL -> R.string.overlay_panel
+                        OverlayMode.TOAST -> R.string.overlay_toast
+                    }
+                )
+            },
+            onSelect = { mode ->
+                overlayOn = mode
+                settings.overlayMode = mode
+            },
+        )
+
+        if (overlayOn == OverlayMode.PANEL && !canDraw) {
+            Text(
+                stringResource(R.string.overlay_missing),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+            )
+            OutlinedButton(onClick = {
+                val intent = Intent(
+                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    "package:${context.packageName}".toUri(),
+                ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                val opened = runCatching { overlayPermission.launch(intent) }
+                if (opened.isFailure) {
+                    BridgeLog.w(SCOPE, "no overlay permission screen on this headset")
+                }
+            }) { Text(stringResource(R.string.action_allow_overlay)) }
+        }
+    }
+}
+
+@Composable
+private fun HeadsetCastSection(settings: BridgeSettings) {
+    val context = LocalContext.current
+    val casting by HeadsetCastService.running.collectAsStateWithLifecycle()
+    val host = settings.tcpHost
+
+    SectionCard(
+        title = stringResource(R.string.section_cast),
+        subtitle = stringResource(R.string.section_cast_hint_headset),
+    ) {
+        Button(
+            onClick = {
+                if (casting) {
+                    HeadsetCastService.stop(context)
+                    HeadsetBridge.send(Envelope(action = Action.CAST_STOP))
+                } else {
+                    HeadsetBridge.send(Envelope(action = Action.CAST_START))
+                    HeadsetCastService.start(context, settings.castSource)
+                }
+            },
+            enabled = host != null,
+        ) {
+            Text(stringResource(if (casting) R.string.action_stop_cast else R.string.action_start_cast))
+        }
+        Text(
+            stringResource(if (host == null) R.string.cast_needs_wifi else R.string.cast_needs_adb),
+            style = MaterialTheme.typography.bodySmall,
+            color = if (host == null) {
+                MaterialTheme.colorScheme.error
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            },
+        )
     }
 }
 

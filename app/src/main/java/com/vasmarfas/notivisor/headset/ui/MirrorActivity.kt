@@ -42,14 +42,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vasmarfas.notivisor.R
+import com.vasmarfas.notivisor.core.control.MirrorState
+import com.vasmarfas.notivisor.core.control.ScreenReceiver
 import com.vasmarfas.notivisor.core.protocol.Action
 import com.vasmarfas.notivisor.core.protocol.Envelope
 import com.vasmarfas.notivisor.core.protocol.ScreenControl
 import com.vasmarfas.notivisor.core.transport.TransportConfig
 import com.vasmarfas.notivisor.core.ui.theme.NotivisorTheme
 import com.vasmarfas.notivisor.headset.core.HeadsetBridge
-import com.vasmarfas.notivisor.headset.core.MirrorState
-import com.vasmarfas.notivisor.headset.core.ScreenReceiver
 import android.view.MotionEvent
 
 class MirrorActivity : ComponentActivity() {

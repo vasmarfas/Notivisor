@@ -43,6 +43,8 @@ data class TransportConfig(
         const val DEFAULT_TCP_PORT = 47820
 
         const val SCREEN_STREAM_PORT = 47830
+
+        const val CAST_STREAM_PORT = 47831
     }
 }
 

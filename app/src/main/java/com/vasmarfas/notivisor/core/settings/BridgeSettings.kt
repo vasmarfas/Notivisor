@@ -3,6 +3,7 @@ package com.vasmarfas.notivisor.core.settings
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
+import com.vasmarfas.notivisor.core.control.CastSource
 import com.vasmarfas.notivisor.core.protocol.Pairing
 import com.vasmarfas.notivisor.core.protocol.PairingPayload
 import com.vasmarfas.notivisor.core.transport.LinkRole
@@ -13,6 +14,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import javax.crypto.SecretKey
+
+enum class OverlayMode { NONE, PANEL, TOAST }
 
 enum class FilterMode {
     ALLOW_ALL,
@@ -89,6 +92,15 @@ class BridgeSettings private constructor(private val prefs: SharedPreferences) {
     var mirrorActions: Boolean
         get() = prefs.getBoolean(KEY_MIRROR_ACTIONS, true)
         set(value) = put { putBoolean(KEY_MIRROR_ACTIONS, value) }
+
+    var overlayMode: OverlayMode
+        get() = runCatching { OverlayMode.valueOf(prefs.getString(KEY_OVERLAY_MODE, null) ?: "") }
+            .getOrDefault(OverlayMode.NONE)
+        set(value) = put { putString(KEY_OVERLAY_MODE, value.name) }
+
+    var castSource: CastSource
+        get() = CastSource.parse(prefs.getString(KEY_CAST_SOURCE, null))
+        set(value) = put { putString(KEY_CAST_SOURCE, value.name) }
 
     var offerCodes: Boolean
         get() = prefs.getBoolean(KEY_OFFER_CODES, true)
@@ -189,6 +201,8 @@ class BridgeSettings private constructor(private val prefs: SharedPreferences) {
         private const val KEY_SHOW_SOURCE_APP = "show_source_app"
         private const val KEY_MIRROR_ACTIONS = "mirror_actions"
         private const val KEY_OFFER_CODES = "offer_codes"
+        private const val KEY_CAST_SOURCE = "cast_source"
+        private const val KEY_OVERLAY_MODE = "overlay_mode"
         private const val KEY_AUTO_DND = "auto_dnd"
         private const val KEY_PRESENCE_GATED = "presence_gated"
         private const val KEY_PAIRING_CODE = "pairing_code"

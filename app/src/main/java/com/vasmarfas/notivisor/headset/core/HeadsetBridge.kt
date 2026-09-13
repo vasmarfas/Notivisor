@@ -5,6 +5,7 @@ import android.content.Intent
 import android.os.BatteryManager
 import androidx.core.net.toUri
 import com.vasmarfas.notivisor.R
+import com.vasmarfas.notivisor.core.control.CastSource
 import com.vasmarfas.notivisor.core.link.LinkManager
 import com.vasmarfas.notivisor.core.protocol.Action
 import com.vasmarfas.notivisor.core.protocol.Envelope
@@ -12,6 +13,7 @@ import com.vasmarfas.notivisor.core.settings.BridgeSettings
 import com.vasmarfas.notivisor.core.transport.LinkRole
 import com.vasmarfas.notivisor.core.util.BridgeLog
 import com.vasmarfas.notivisor.core.util.Clipboard
+import com.vasmarfas.notivisor.headset.service.HeadsetCastService
 import com.vasmarfas.notivisor.headset.service.ReceiverService
 
 object HeadsetBridge {
@@ -125,6 +127,22 @@ object HeadsetBridge {
                 onMirrorStop?.invoke()
             }
 
+            Action.CAST_START -> {
+                val source = CastSource.parse(envelope.data)
+                HeadsetCastService.start(appContext, source)
+                BridgeLog.i(SCOPE, "the phone opened the viewer, casting via $source")
+            }
+
+            Action.PROXIMITY -> Thread {
+                val off = HeadsetProximity.set(appContext, envelope.prox == true)
+                link.sendDirect(Envelope(action = Action.PROXIMITY, prox = off))
+            }.apply { isDaemon = true }.start()
+
+            Action.CAST_STOP -> {
+                HeadsetCastService.stop(appContext)
+                BridgeLog.i(SCOPE, "the phone closed the viewer")
+            }
+
             else -> BridgeLog.d(SCOPE, "ignoring action '${envelope.action}'")
         }
     }
@@ -140,6 +158,7 @@ object HeadsetBridge {
                 action = Action.STATUS,
                 battery = level,
                 worn = !charging,
+                prox = HeadsetProximity.state(appContext),
                 ts = System.currentTimeMillis(),
             )
         )

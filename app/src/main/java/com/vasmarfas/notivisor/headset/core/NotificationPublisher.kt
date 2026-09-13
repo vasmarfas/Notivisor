@@ -20,6 +20,7 @@ import com.vasmarfas.notivisor.core.protocol.Action
 import com.vasmarfas.notivisor.core.protocol.Envelope
 import com.vasmarfas.notivisor.core.protocol.RemoteAction
 import com.vasmarfas.notivisor.core.settings.BridgeSettings
+import com.vasmarfas.notivisor.core.settings.OverlayMode
 import com.vasmarfas.notivisor.core.util.BridgeLog
 import com.vasmarfas.notivisor.headset.service.RelayReceiver
 import com.vasmarfas.notivisor.headset.ui.CopyActivity
@@ -51,6 +52,8 @@ class NotificationPublisher(context: Context, private val settings: BridgeSettin
     private val prefs = appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
     private val icons = IconCache(appContext)
 
+    val overlay = HeadsetOverlay(appContext)
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val pending = Channel<Envelope>(Channel.BUFFERED)
     private val channels = HashSet<String>()
@@ -60,6 +63,9 @@ class NotificationPublisher(context: Context, private val settings: BridgeSettin
 
     private val _counters = MutableStateFlow(PublishCounters())
     val counters: StateFlow<PublishCounters> = _counters.asStateFlow()
+
+    private val _shade = MutableStateFlow(ShadeState.UNKNOWN)
+    val shade: StateFlow<ShadeState> = _shade.asStateFlow()
 
     var onPublished: ((Envelope) -> Unit)? = null
 
@@ -89,8 +95,10 @@ class NotificationPublisher(context: Context, private val settings: BridgeSettin
             val envelope = pending.receive()
             when (envelope.action) {
                 Action.POST -> {
-                    publish(envelope)
-                    delay(settings.headsUpIntervalMs.milliseconds)
+                    val (channelId, id) = publish(envelope)
+                    val waited = settings.headsUpIntervalMs
+                    delay(waited.milliseconds)
+                    checkShade(channelId, id, waited)
                 }
 
                 Action.REMOVE -> remove(envelope)
@@ -111,7 +119,23 @@ class NotificationPublisher(context: Context, private val settings: BridgeSettin
         BridgeLog.i(SCOPE, "REMOVE key=$key id=$id")
     }
 
-    private fun publish(envelope: Envelope) {
+    private fun checkShade(channelId: String, id: Int, waitedMs: Long) {
+        val probed = manager.probeShade(channelId, id)
+        if (probed == ShadeState.DROPPED &&
+            (waitedMs < SETTLE_FLOOR_MS || _shade.value == ShadeState.OK)
+        ) {
+            return
+        }
+        if (probed == _shade.value) return
+        _shade.value = probed
+        if (probed == ShadeState.OK) {
+            BridgeLog.i(SCOPE, "shade: ${probed.describe()}")
+        } else {
+            BridgeLog.w(SCOPE, "shade: ${probed.describe()} (${Build.MANUFACTURER} ${Build.MODEL}, API ${Build.VERSION.SDK_INT})")
+        }
+    }
+
+    private fun publish(envelope: Envelope): Pair<String, Int> {
         val pkg = envelope.pkg ?: "unknown"
         val call = envelope.category == Notification.CATEGORY_CALL
         val channelId = ensureChannel(pkg, envelope.app ?: pkg, call)
@@ -173,6 +197,11 @@ class NotificationPublisher(context: Context, private val settings: BridgeSettin
         }
 
         manager.notify(id, builder.build())
+        when (settings.overlayMode) {
+            OverlayMode.PANEL -> overlay.show(envelope.title ?: app, body)
+            OverlayMode.TOAST -> overlay.toast(envelope.title ?: app, body)
+            OverlayMode.NONE -> Unit
+        }
         _counters.value = _counters.value.copy(
             published = _counters.value.published + 1,
             lastTitle = envelope.title ?: envelope.text,
@@ -183,6 +212,7 @@ class NotificationPublisher(context: Context, private val settings: BridgeSettin
                     " actions=${envelope.actions.size}"
         )
         onPublished?.invoke(envelope)
+        return channelId to id
     }
 
     @RequiresApi(Build.VERSION_CODES.P)
@@ -339,5 +369,6 @@ class NotificationPublisher(context: Context, private val settings: BridgeSettin
 
         const val REQUEST_SLOTS = 8
         const val CODE_REQUEST_SLOT = 7
+        const val SETTLE_FLOOR_MS = 1_000L
     }
 }

@@ -1,4 +1,4 @@
-package com.vasmarfas.notivisor.headset.core
+package com.vasmarfas.notivisor.core.control
 
 import android.media.MediaCodec
 import android.media.MediaFormat
@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.io.DataInputStream
 import java.io.IOException
+import java.net.ServerSocket
 import java.net.Socket
 import java.util.concurrent.Executors
 
@@ -24,6 +25,9 @@ class ScreenReceiver {
 
     @Volatile
     private var socket: Socket? = null
+
+    @Volatile
+    private var server: ServerSocket? = null
     private var decoder: MediaCodec? = null
     private var thread: Thread? = null
     private val sender = Executors.newSingleThreadExecutor { task ->
@@ -33,21 +37,52 @@ class ScreenReceiver {
     @Volatile
     private var frames = 0L
 
+    @Volatile
+    private var listening = false
+
     private val _state = MutableStateFlow<MirrorState>(MirrorState.Idle)
     val state: StateFlow<MirrorState> = _state.asStateFlow()
 
     fun start(host: String, port: Int, surface: Surface) {
         stop()
         _state.value = MirrorState.Connecting
-        thread = Thread { runLoop(host, port, surface) }.apply { isDaemon = true; start() }
+        thread = Thread { runLoop(surface) { connect(host, port) } }
+            .apply { isDaemon = true; start() }
     }
 
-    private fun runLoop(host: String, port: Int, surface: Surface) {
-        val result = runCatching { connectAndDecode(host, port, surface) }
-        result.onFailure {
+    fun listen(port: Int, surface: Surface) {
+        stop()
+        listening = true
+        _state.value = MirrorState.Connecting
+        thread = Thread { listenLoop(port, surface) }.apply { isDaemon = true; start() }
+    }
+
+    private fun runLoop(surface: Surface, open: () -> Socket) {
+        runCatching { decode(open(), surface) }.onFailure {
             BridgeLog.w(SCOPE, "mirror stopped: ${it.message}")
             _state.value = MirrorState.Failed(it.message ?: "connection lost")
         }
+    }
+
+    private fun listenLoop(port: Int, surface: Surface) {
+        val listener = runCatching { ServerSocket(port) }.getOrElse {
+            BridgeLog.w(SCOPE, "could not open the streaming port: ${it.message}")
+            _state.value = MirrorState.Failed(it.message ?: "port busy")
+            return
+        }
+        server = listener
+        BridgeLog.i(SCOPE, "waiting for a stream on $port")
+        while (listening) {
+            val client = runCatching { listener.accept() }.getOrNull() ?: break
+            runCatching { decode(client, surface) }
+                .onFailure { BridgeLog.i(SCOPE, "stream ended: ${it.message}") }
+            releaseDecoder()
+            runCatching { client.close() }
+            socket = null
+            if (listening) _state.value = MirrorState.Connecting
+        }
+        runCatching { listener.close() }
+        server = null
     }
 
     private fun connect(host: String, port: Int): Socket {
@@ -64,9 +99,8 @@ class ScreenReceiver {
         throw lastError ?: IOException("could not connect")
     }
 
-    private fun connectAndDecode(host: String, port: Int, surface: Surface) {
+    private fun decode(sock: Socket, surface: Surface) {
         frames = 0
-        val sock = connect(host, port)
         socket = sock
         val input = DataInputStream(sock.getInputStream())
         val width = input.readInt()
@@ -131,15 +165,22 @@ class ScreenReceiver {
     }
 
     fun stop() {
+        listening = false
         thread?.interrupt()
         thread = null
+        releaseDecoder()
+        runCatching { server?.close() }
+        server = null
+        runCatching { socket?.close() }
+        socket = null
+        _state.value = MirrorState.Idle
+    }
+
+    private fun releaseDecoder() {
         val current = decoder
         decoder = null
         runCatching { current?.stop() }
         runCatching { current?.release() }
-        runCatching { socket?.close() }
-        socket = null
-        _state.value = MirrorState.Idle
     }
 
     private fun isCodecConfig(bytes: ByteArray): Boolean {
@@ -152,12 +193,11 @@ class ScreenReceiver {
 
             else -> return false
         }
-        return (bytes[start].toInt() and 0x1F) == NAL_SPS
+        return (bytes[start].toInt() and 0x1F) == H264.NAL_SPS
     }
 
     private companion object {
         const val SCOPE = "mirror"
-        const val NAL_SPS = 7
         const val KEY_LOW_LATENCY = "low-latency"
         const val MIME = "video/avc"
         const val DEQUEUE_TIMEOUT_US = 10_000L
