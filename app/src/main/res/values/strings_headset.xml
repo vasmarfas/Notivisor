@@ -15,11 +15,17 @@
     <string name="label_code_hint">16 digits shown on the phone</string>
     <string name="label_host">Phone address</string>
     <string name="label_port">Port</string>
+    <string name="address_unknown">not known yet</string>
+    <string name="action_find_phone">Find the phone</string>
+    <string name="action_searching">Searching…</string>
+    <string name="action_manual_address">Enter manually</string>
+    <string name="find_phone_hint">The phone announces itself on the Wi-Fi, so the address does not have to be typed.</string>
+    <string name="find_phone_failed">Nothing found. Check that both devices are on the same Wi-Fi and the app is running on the phone.</string>
 
     <string name="label_who_hint_headset">Must match the setting on the phone.</string>
     <string name="label_gap">Pause between notifications</string>
     <string name="label_gap_hint">Spacing them out keeps a burst from being swallowed by the system.</string>
-    <string name="gap_none">No pause</string>
+    <string name="gap_none">None</string>
     <string name="gap_seconds">%1$d s</string>
 
     <string name="action_scan">Scan QR</string>

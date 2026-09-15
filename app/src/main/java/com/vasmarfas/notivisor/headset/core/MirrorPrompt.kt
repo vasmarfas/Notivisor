@@ -7,6 +7,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import com.vasmarfas.notivisor.R
+import com.vasmarfas.notivisor.core.util.vrTagged
 import com.vasmarfas.notivisor.headset.ui.MirrorActivity
 
 object MirrorPrompt {
@@ -42,6 +43,7 @@ object MirrorPrompt {
                 .setSmallIcon(R.drawable.ic_stat_bridge)
                 .setContentIntent(open)
                 .setAutoCancel(true)
+                .vrTagged()
                 .build()
         )
     }

@@ -10,6 +10,7 @@ import android.content.Intent
 import android.provider.Settings
 import com.vasmarfas.notivisor.R
 import com.vasmarfas.notivisor.core.util.BridgeLog
+import com.vasmarfas.notivisor.core.util.vrTagged
 
 object AdbPairPrompt {
 
@@ -57,6 +58,7 @@ object AdbPairPrompt {
                         reply,
                     ).addRemoteInput(remoteInput).build()
                 )
+                .vrTagged()
                 .build()
         )
     }
@@ -75,6 +77,7 @@ object AdbPairPrompt {
                 .setSmallIcon(R.drawable.ic_stat_bridge)
                 .setAutoCancel(true)
                 .setTimeoutAfter(if (paired) DISMISS_MS else FAILURE_DISMISS_MS)
+                .vrTagged()
                 .build()
         )
     }
@@ -89,6 +92,7 @@ object AdbPairPrompt {
                 .setSmallIcon(R.drawable.ic_stat_bridge)
                 .setOngoing(true)
                 .setProgress(0, 0, true)
+                .vrTagged()
                 .build()
         )
     }

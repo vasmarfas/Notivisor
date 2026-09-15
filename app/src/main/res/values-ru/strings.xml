@@ -20,6 +20,14 @@
     <string name="detail_waiting">%1$s · шлем вне зоны или выключен</string>
     <string name="detail_failed">%1$s · подробности в журнале</string>
 
+    <string name="tab_home">Главное</string>
+    <string name="tab_link">Связь</string>
+    <string name="tab_stream">Трансляция</string>
+    <string name="tab_notifications">Уведомления</string>
+    <string name="action_ok">Понятно</string>
+    <string name="version_mismatch">Версии разные: здесь %1$s, на другом устройстве %2$s. Пока они не совпадают, часть функций может не работать.</string>
+    <string name="version_older">На другом устройстве версия старее — она не сообщает себя. Если что-то работает не так, обновите оба.</string>
+
     <string name="section_setup">Перед началом работы</string>
     <string name="section_setup_hint">Две настройки, которые система просит подтвердить вручную.</string>
     <string name="section_connection">Соединение</string>
@@ -53,10 +61,12 @@
     <string name="transport_bluetooth">Bluetooth</string>
     <string name="transport_wifi">Wi-Fi</string>
     <string name="label_who_searches">Кто кого ищет</string>
-    <string name="who_headset">Шлем ищет телефон</string>
-    <string name="who_phone">Телефон ищет шлем</string>
+    <string name="who_headset">Шлем</string>
+    <string name="who_phone">Телефон</string>
     <string name="label_who_hint">Обычно надёжнее, когда ищет шлем. Меняйте только если соединение не устанавливается.</string>
     <string name="label_address">Этот телефон</string>
+    <string name="address_hint_phone">Шлем подхватывает этот адрес сам, он же уезжает в QR-коде.</string>
+    <string name="pairing_hint_phone">Покажите код и отсканируйте его в шлеме: адрес, тип связи и ключ шифрования уезжают в нём.</string>
 
     <string name="label_show_source">Название приложения в уведомлении</string>
     <string name="label_show_source_hint">Каждое уведомление подписывается тем приложением, из которого пришло.</string>
@@ -99,9 +109,9 @@
     <string name="quit_confirm">Завершить</string>
     <string name="quit_cancel">Отмена</string>
     <string name="action_copy_code">Скопировать %1$s</string>
-    <string name="action_send_clipboard">Отправить буфер обмена</string>
+    <string name="action_send_clipboard">Буфер обмена</string>
     <string name="action_find_headset">Найти шлем</string>
-    <string name="action_send_text">Набрать и отправить текст</string>
+    <string name="action_send_text">Набрать текст</string>
 
     <string name="share_target">Открыть в шлеме</string>
     <string name="share_sent">Отправлено в шлем</string>
@@ -128,7 +138,7 @@
 
     <string name="channel_mirror">Трансляция экрана</string>
     <string name="mirror_notification_text">Экран транслируется в шлем</string>
-    <string name="section_mirror">Трансляция экрана</string>
+    <string name="section_mirror">Экран телефона в шлеме</string>
     <string name="section_mirror_hint">Касания доходят до телефона, если на нём включён сервис управления</string>
     <string name="section_mirror_hint_phone">Только по Wi-Fi; шлем подключается к телефону напрямую</string>
     <string name="mirror_idle">Не подключено</string>
@@ -138,7 +148,7 @@
     <string name="mirror_needs_wifi">Сначала переключитесь на Wi-Fi и укажите адрес телефона</string>
     <string name="action_start_mirror">Начать трансляцию</string>
     <string name="action_stop_mirror">Остановить трансляцию</string>
-    <string name="action_open_mirror_window">Открыть в окне</string>
+    <string name="action_open_mirror_window">Открыть окно</string>
     <string name="action_close_window">Закрыть</string>
     <string name="action_key_back">Назад</string>
     <string name="action_key_home">Домой</string>
@@ -154,7 +164,7 @@
     <string name="shade_dropped">Система принимает уведомление и тут же его теряет — этот шлем не показывает уведомления сторонних приложений.</string>
     <string name="action_open_notification_settings">Настройки уведомлений</string>
     <string name="setting_overlay_hint">Там, где система уведомления не показывает, приложение может вывести их само. Панели нужно разрешение рисовать поверх других приложений. Всплывающему сообщению — тот же слой, на котором шлем рисует свои собственные сообщения.</string>
-    <string name="overlay_off">Только система</string>
+    <string name="overlay_off">Система</string>
     <string name="overlay_panel">Панель</string>
     <string name="overlay_toast">Сообщение</string>
     <string name="action_allow_overlay">Разрешить рисовать поверх</string>
@@ -162,7 +172,7 @@
 
     <string name="channel_cast">Вид из шлема</string>
     <string name="cast_notification_text">Шлем транслируется на телефон</string>
-    <string name="section_cast">Вид из шлема</string>
+    <string name="section_cast">Вид из шлема на телефоне</string>
     <string name="section_cast_hint_phone">Посмотреть и послушать, что происходит в шлеме; нужен общий Wi-Fi</string>
     <string name="section_cast_hint_headset">Отдаёт картинку и звук шлема на телефон по Wi-Fi</string>
     <string name="cast_idle">Трансляция не идёт</string>

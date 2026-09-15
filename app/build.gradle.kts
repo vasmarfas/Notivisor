@@ -11,8 +11,8 @@ android {
         applicationId = "com.vasmarfas.notivisor"
         minSdk = 26
         targetSdk = 37
-        versionCode = 5
-        versionName = "1.2.1"
+        versionCode = 7
+        versionName = "1.3.0"
     }
 
     buildTypes {
@@ -63,6 +63,7 @@ dependencies {
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.compose.material.icons)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.activity.compose)
 

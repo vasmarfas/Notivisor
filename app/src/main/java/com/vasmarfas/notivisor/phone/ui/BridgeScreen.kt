@@ -12,6 +12,7 @@ import android.provider.Settings
 import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.StringRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -26,11 +27,19 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -47,11 +56,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -84,6 +95,7 @@ import com.vasmarfas.notivisor.core.ui.SegmentedChoice
 import com.vasmarfas.notivisor.core.ui.SettingRow
 import com.vasmarfas.notivisor.core.ui.StatRow
 import com.vasmarfas.notivisor.core.ui.StatusBanner
+import com.vasmarfas.notivisor.core.ui.VersionNotice
 import com.vasmarfas.notivisor.core.util.BridgeLog
 import com.vasmarfas.notivisor.phone.core.DoNotDisturb
 import com.vasmarfas.notivisor.phone.core.HeadsetStatus
@@ -113,8 +125,10 @@ fun BridgeScreen() {
     val listenerConnected by PhoneBridge.listenerConnected.collectAsStateWithLifecycle()
     val headset by PhoneBridge.headset.collectAsStateWithLifecycle()
     val castError by PhoneBridge.castError.collectAsStateWithLifecycle()
+    val peer by PhoneBridge.link.peer.collectAsStateWithLifecycle()
     val log by BridgeLog.lines.collectAsStateWithLifecycle()
 
+    var tab by rememberSaveable { mutableStateOf(PhoneTab.HOME) }
     var apps by remember { mutableStateOf<List<InstalledApp>>(emptyList()) }
     var query by remember { mutableStateOf("") }
     var permissionTick by remember { mutableStateOf(0) }
@@ -195,6 +209,25 @@ fun BridgeScreen() {
                 ),
             )
         },
+        bottomBar = {
+            NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
+                PhoneTab.entries.forEach { entry ->
+                    NavigationBarItem(
+                        selected = tab == entry,
+                        onClick = { tab = entry },
+                        icon = { Icon(entry.icon, contentDescription = null) },
+                        label = {
+                            Text(
+                                stringResource(entry.label),
+                                style = MaterialTheme.typography.labelSmall,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        },
+                    )
+                }
+            }
+        },
         containerColor = MaterialTheme.colorScheme.background,
     ) { padding ->
         LazyColumn(
@@ -204,515 +237,563 @@ fun BridgeScreen() {
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            item {
-                StatusBanner(
-                    tone = linkState.tone(),
-                    headline = linkState.headline(context),
-                    detail = linkState.detail(context, settings.transportKind),
-                    facts = buildList {
-                        add(stringResource(R.string.stat_forwarded) to counters.mirrored.toString())
-                        stats.lastRttMs?.let { add(stringResource(R.string.stat_ping) to "$it ms") }
-                        stats.connectedSince?.let {
-                            add(stringResource(R.string.stat_online) to formatUptime(it))
-                        }
-                        if (stats.queued > 0) {
-                            add(stringResource(R.string.stat_waiting) to stats.queued.toString())
-                        }
-                    },
-                )
-            }
-
-            item {
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Button(
-                        onClick = { PhoneBridge.sendTest() },
-                        modifier = Modifier.weight(1f),
-                    ) { Text(stringResource(R.string.action_test)) }
-                    OutlinedButton(
-                        onClick = {
-                            if (settings.pairingCode == null) settings.pairingCode =
-                                Pairing.generateCode()
-                            showPairing = true
+            when (tab) {
+                PhoneTab.HOME -> {
+                item {
+                    StatusBanner(
+                        tone = linkState.tone(),
+                        headline = linkState.headline(context),
+                        detail = linkState.detail(context, settings.transportKind),
+                        facts = buildList {
+                            add(stringResource(R.string.stat_forwarded) to counters.mirrored.toString())
+                            stats.lastRttMs?.let { add(stringResource(R.string.stat_ping) to "$it ms") }
+                            stats.connectedSince?.let {
+                                add(stringResource(R.string.stat_online) to formatUptime(it))
+                            }
+                            if (stats.queued > 0) {
+                                add(stringResource(R.string.stat_waiting) to stats.queued.toString())
+                            }
                         },
-                        modifier = Modifier.weight(1f),
-                    ) { Text(stringResource(R.string.action_pair)) }
+                    )
                 }
-            }
 
-            if (!setupDone) {
+                if (!setupDone) {
+                    item {
+                        SectionCard(
+                            title = stringResource(R.string.section_setup),
+                            subtitle = stringResource(R.string.section_setup_hint),
+                        ) {
+                            ChecklistRow(
+                                done = listenerReady,
+                                title = stringResource(R.string.setup_listener),
+                                detail = stringResource(R.string.setup_listener_hint),
+                            ) {
+                                context.startActivity(
+                                    Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+                                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                )
+                            }
+                            ChecklistRow(
+                                done = batteryReady,
+                                title = stringResource(R.string.setup_battery),
+                                detail = stringResource(R.string.setup_battery_hint),
+                            ) {
+                                permissionTick++
+                                requestIgnoreBattery(context)
+                            }
+                            ChecklistRow(
+                                done = missingPermissions.isEmpty(),
+                                title = stringResource(R.string.setup_permissions),
+                                detail = stringResource(R.string.setup_permissions_hint),
+                            ) {
+                                if (missingPermissions.isNotEmpty()) {
+                                    permissionLauncher.launch(missingPermissions.toTypedArray())
+                                }
+                            }
+                        }
+                    }
+                }
+
+                item { VersionNotice(peer) }
+
+                item {
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Button(
+                            onClick = { PhoneBridge.sendTest() },
+                            modifier = Modifier.weight(1f),
+                        ) { Text(stringResource(R.string.action_test)) }
+                        OutlinedButton(
+                            onClick = {
+                                if (settings.pairingCode == null) settings.pairingCode =
+                                    Pairing.generateCode()
+                                showPairing = true
+                            },
+                            modifier = Modifier.weight(1f),
+                        ) { Text(stringResource(R.string.action_pair)) }
+                    }
+                }
+
                 item {
                     SectionCard(
-                        title = stringResource(R.string.section_setup),
-                        subtitle = stringResource(R.string.section_setup_hint),
+                        title = stringResource(R.string.section_headset),
+                        subtitle = headset.describe(context),
                     ) {
-                        ChecklistRow(
-                            done = listenerReady,
-                            title = stringResource(R.string.setup_listener),
-                            detail = stringResource(R.string.setup_listener_hint),
-                        ) {
-                            context.startActivity(
-                                Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
-                                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                            )
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            OutlinedButton(
+                                onClick = { PhoneBridge.sendClipboard() },
+                                enabled = linkState.isConnected,
+                                modifier = Modifier.weight(1f),
+                            ) { Text(stringResource(R.string.action_send_clipboard)) }
+                            OutlinedButton(
+                                onClick = { PhoneBridge.findHeadset() },
+                                enabled = linkState.isConnected,
+                                modifier = Modifier.weight(1f),
+                            ) { Text(stringResource(R.string.action_find_headset)) }
                         }
-                        ChecklistRow(
-                            done = batteryReady,
-                            title = stringResource(R.string.setup_battery),
-                            detail = stringResource(R.string.setup_battery_hint),
-                        ) {
-                            permissionTick++
-                            requestIgnoreBattery(context)
-                        }
-                        ChecklistRow(
-                            done = missingPermissions.isEmpty(),
-                            title = stringResource(R.string.setup_permissions),
-                            detail = stringResource(R.string.setup_permissions_hint),
-                        ) {
-                            if (missingPermissions.isNotEmpty()) {
-                                permissionLauncher.launch(missingPermissions.toTypedArray())
-                            }
-                        }
-                    }
-                }
-            }
 
-            item {
-                SectionCard(
-                    title = stringResource(R.string.section_connection),
-                    subtitle = stringResource(R.string.section_connection_hint),
-                ) {
-                    val kind = revision.let { settings.transportKind }
-                    SegmentedChoice(
-                        options = listOf(TransportKind.BLE, TransportKind.TCP),
-                        selected = kind,
-                        label = {
-                            stringResource(
-                                if (it == TransportKind.BLE) R.string.transport_bluetooth else R.string.transport_wifi
-                            )
-                        },
-                        onSelect = {
-                            settings.transportKind = it
-                            PhoneBridge.restartLink("transport = $it")
-                        },
-                    )
-                    if (kind == TransportKind.BLE) {
-                        Text(
-                            stringResource(R.string.label_who_searches),
-                            style = MaterialTheme.typography.bodyLarge,
-                        )
-                        SegmentedChoice(
-                            options = listOf(true, false),
-                            selected = revision.let { settings.bleServerIsSource },
-                            label = {
-                                stringResource(if (it) R.string.who_headset else R.string.who_phone)
-                            },
-                            onSelect = {
-                                settings.bleServerIsSource = it
-                                PhoneBridge.restartLink("search direction changed")
-                            },
-                        )
-                        Text(
-                            stringResource(R.string.label_who_hint),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    } else {
-                        InfoLine(
-                            stringResource(R.string.label_address),
-                            "${localAddress() ?: "—"}:${settings.tcpPort}"
-                        )
-                    }
-                }
-            }
-
-            item {
-                SectionCard(
-                    title = stringResource(R.string.section_notifications),
-                    subtitle = stringResource(R.string.section_notifications_hint),
-                ) {
-                    SettingRow(
-                        title = stringResource(R.string.label_show_source),
-                        subtitle = stringResource(R.string.label_show_source_hint),
-                        checked = revision.let { settings.showSourceApp },
-                    ) { settings.showSourceApp = it }
-                    SettingRow(
-                        title = stringResource(R.string.label_persistent),
-                        subtitle = stringResource(R.string.label_persistent_hint),
-                        checked = revision.let { settings.mirrorOngoing },
-                    ) { settings.mirrorOngoing = it }
-                    SettingRow(
-                        title = stringResource(R.string.label_actions),
-                        subtitle = stringResource(R.string.label_actions_hint),
-                        checked = revision.let { settings.mirrorActions },
-                    ) { settings.mirrorActions = it }
-                    SettingRow(
-                        title = stringResource(R.string.label_codes),
-                        subtitle = stringResource(R.string.label_codes_hint),
-                        checked = revision.let { settings.offerCodes },
-                    ) { settings.offerCodes = it }
-                    SettingRow(
-                        title = stringResource(R.string.label_dnd),
-                        subtitle = stringResource(
-                            if (dndReady) R.string.label_dnd_hint else R.string.label_dnd_permission
-                        ),
-                        checked = revision.let { settings.autoDnd },
-                    ) { value ->
-                        settings.autoDnd = value
-
-                        if (value && !DoNotDisturb.granted(context)) {
-                            permissionTick++
-                            context.startActivity(
-                                Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)
-                                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                            )
-                        }
-                    }
-                    SettingRow(
-                        title = stringResource(R.string.label_presence),
-                        subtitle = stringResource(R.string.label_presence_hint),
-                        checked = revision.let { settings.presenceGated },
-                    ) { settings.presenceGated = it }
-                    SettingRow(
-                        title = stringResource(R.string.label_enabled),
-                        subtitle = stringResource(R.string.label_enabled_hint),
-                        checked = revision.let { settings.enabled },
-                    ) { value ->
-                        settings.enabled = value
-                        if (value) BridgeService.start(context) else PhoneBridge.stopLink()
-                    }
-                }
-            }
-
-            item {
-                SectionCard(title = stringResource(R.string.section_headset)) {
-                    InfoLine(
-                        stringResource(R.string.section_headset),
-                        headset.describe(context),
-                    )
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         OutlinedButton(
-                            onClick = { PhoneBridge.sendClipboard() },
-                            enabled = linkState.isConnected,
-                            modifier = Modifier.weight(1f),
-                        ) { Text(stringResource(R.string.action_send_clipboard)) }
-                        OutlinedButton(
-                            onClick = { PhoneBridge.findHeadset() },
-                            enabled = linkState.isConnected,
-                            modifier = Modifier.weight(1f),
-                        ) { Text(stringResource(R.string.action_find_headset)) }
-                    }
-
-                    OutlinedButton(
-                        onClick = {
-                            context.startActivity(
-                                Intent(context, RemoteTypeActivity::class.java)
-                                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                            )
-                        },
-                        enabled = linkState.isConnected,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) { Text(stringResource(R.string.action_send_text)) }
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        OutlinedButton(
-                            onClick = { PhoneBridge.changeHeadsetVolume(-1) },
-                            enabled = linkState.isConnected,
-                        ) { Text("−") }
-                        OutlinedButton(
-                            onClick = { PhoneBridge.pressMediaKey(MediaKey.PREVIOUS) },
-                            enabled = linkState.isConnected,
-                            modifier = Modifier.weight(1f),
-                        ) { Text("⏮") }
-                        OutlinedButton(
-                            onClick = { PhoneBridge.pressMediaKey(MediaKey.PLAY_PAUSE) },
-                            enabled = linkState.isConnected,
-                            modifier = Modifier.weight(1f),
-                        ) { Text("⏯") }
-                        OutlinedButton(
-                            onClick = { PhoneBridge.pressMediaKey(MediaKey.NEXT) },
-                            enabled = linkState.isConnected,
-                            modifier = Modifier.weight(1f),
-                        ) { Text("⏭") }
-                        OutlinedButton(
-                            onClick = { PhoneBridge.changeHeadsetVolume(1) },
-                            enabled = linkState.isConnected,
-                        ) { Text("+") }
-                    }
-                }
-            }
-
-            item {
-                val streaming by ScreenCaptureService.running.collectAsStateWithLifecycle()
-                val projectionLauncher = rememberLauncherForActivityResult(
-                    ActivityResultContracts.StartActivityForResult()
-                ) { result ->
-                    val data = result.data
-                    if (result.resultCode == Activity.RESULT_OK && data != null) {
-                        ScreenCaptureService.start(context, result.resultCode, data)
-                    }
-                }
-                val shizukuReady by ShizukuInput.available.collectAsStateWithLifecycle()
-                val controlReady by ScrcpySession.controlReady.collectAsStateWithLifecycle()
-                var starting by remember { mutableStateOf(false) }
-                val scope = rememberCoroutineScope()
-                LaunchedEffect(Unit) { ShizukuInput.connect(context) }
-
-                SectionCard(
-                    title = stringResource(R.string.section_mirror),
-                    subtitle = stringResource(R.string.section_mirror_hint_phone),
-                ) {
-                    Button(
-                        enabled = !starting,
-                        onClick = {
-                            if (streaming) {
-                                ScreenCaptureService.stop(context)
-                                PhoneBridge.sendMirrorState(false)
-                                return@Button
-                            }
-
-                            PhoneBridge.sendMirrorState(true)
-
-                            starting = true
-                            scope.launch(Dispatchers.IO) {
-                                val viaScrcpy = ScrcpySession.isAvailable(context)
-                                withContext(Dispatchers.Main) {
-                                    if (viaScrcpy) {
-                                        ScreenCaptureService.startWithScrcpy(context)
-                                    } else {
-                                        val manager = context.getSystemService(
-                                            MediaProjectionManager::class.java
-                                        )
-                                        projectionLauncher.launch(manager.createScreenCaptureIntent())
-                                    }
-                                    starting = false
-                                }
-                            }
-                        },
-                    ) {
-                        Text(
-                            stringResource(
-                                when {
-                                    streaming -> R.string.action_stop_mirror
-                                    starting -> R.string.mirror_connecting
-                                    else -> R.string.action_start_mirror
-                                }
-                            )
-                        )
-                    }
-                    Text(
-                        stringResource(
-                            when {
-                                controlReady -> R.string.setup_control_adb
-                                shizukuReady -> R.string.setup_control_shizuku
-                                else -> R.string.setup_control_hint
-                            }
-                        ),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    if (!controlReady) {
-
-                        TextButton(onClick = {
-                            AdbPairPrompt.show(context)
-                            AdbPairPrompt.openPairingScreen(context)
-                        }) { Text(stringResource(R.string.action_pair_adb)) }
-                    }
-                }
-            }
-
-            item {
-                SectionCard(
-                    title = stringResource(R.string.section_cast),
-                    subtitle = stringResource(R.string.section_cast_hint_phone),
-                ) {
-                    val source = revision.let { settings.castSource }
-                    val sensorOff = headset.proximitySensorOff
-
-                    SegmentedChoice(
-                        options = listOf(CastSource.MAGIC, CastSource.SCRCPY),
-                        selected = source,
-                        label = {
-                            stringResource(
-                                if (it == CastSource.MAGIC) R.string.cast_source_magic
-                                else R.string.cast_source_scrcpy
-                            )
-                        },
-                        onSelect = { settings.castSource = it },
-                    )
-                    Text(
-                        stringResource(
-                            if (source == CastSource.MAGIC) R.string.cast_source_magic_hint
-                            else R.string.cast_source_scrcpy_hint
-                        ),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Button(
-                            onClick = { CastActivity.open(context) },
-                            enabled = linkState.isConnected,
-                        ) { Text(stringResource(R.string.action_watch_headset)) }
-                        OutlinedButton(
-                            onClick = { PhoneBridge.setHeadsetProximity(sensorOff != true) },
-                            enabled = linkState.isConnected,
-                        ) {
-                            Text(
-                                stringResource(
-                                    if (sensorOff == true) R.string.action_enable_proximity
-                                    else R.string.action_disable_proximity
+                            onClick = {
+                                context.startActivity(
+                                    Intent(context, RemoteTypeActivity::class.java)
+                                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                                 )
-                            )
+                            },
+                            enabled = linkState.isConnected,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { Text(stringResource(R.string.action_send_text)) }
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            OutlinedButton(
+                                onClick = { PhoneBridge.changeHeadsetVolume(-1) },
+                                enabled = linkState.isConnected,
+                            ) { Text("−") }
+                            OutlinedButton(
+                                onClick = { PhoneBridge.pressMediaKey(MediaKey.PREVIOUS) },
+                                enabled = linkState.isConnected,
+                                modifier = Modifier.weight(1f),
+                            ) { Text("⏮") }
+                            OutlinedButton(
+                                onClick = { PhoneBridge.pressMediaKey(MediaKey.PLAY_PAUSE) },
+                                enabled = linkState.isConnected,
+                                modifier = Modifier.weight(1f),
+                            ) { Text("⏯") }
+                            OutlinedButton(
+                                onClick = { PhoneBridge.pressMediaKey(MediaKey.NEXT) },
+                                enabled = linkState.isConnected,
+                                modifier = Modifier.weight(1f),
+                            ) { Text("⏭") }
+                            OutlinedButton(
+                                onClick = { PhoneBridge.changeHeadsetVolume(1) },
+                                enabled = linkState.isConnected,
+                            ) { Text("+") }
                         }
                     }
-                    Text(
-                        stringResource(
-                            when (sensorOff) {
-                                true -> R.string.proximity_off
-                                false -> R.string.proximity_on
-                                null -> R.string.proximity_unknown
+                }
+
+                item {
+                    SectionCard(
+                        title = stringResource(R.string.section_stats),
+                        trailing = {
+                            TextButton(onClick = { PhoneBridge.restartLink("user") }) {
+                                Text(stringResource(R.string.action_restart))
                             }
-                        ),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    castError?.let { reason ->
+                        },
+                    ) {
+                        StatRow(
+                            listOf(
+                                stringResource(R.string.stat_sent) to stats.sent.toString(),
+                                stringResource(R.string.stat_delivered) to stats.acked.toString(),
+                                stringResource(R.string.stat_filtered) to counters.skipped.toString(),
+                                stringResource(R.string.stat_lost) to stats.dropped.toString(),
+                                stringResource(R.string.stat_reconnects) to stats.reconnects.toString(),
+                            )
+                        )
+                        counters.lastEvent?.let {
+                            Text(
+                                stringResource(R.string.label_last_event, it),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                        Row {
+                            TextButton(onClick = { showLog = !showLog }) {
+                                Text(
+                                    stringResource(if (showLog) R.string.action_hide_log else R.string.action_show_log)
+                                )
+                            }
+                            TextButton(onClick = { BridgeLog.share(context) }) {
+                                Text(stringResource(R.string.action_share_log))
+                            }
+                        }
+                        if (showLog) LogPanel(log)
+                    }
+                }
+
+                item { RoleCard() }
+
+                item { AboutCard() }
+
+                item {
+                    TextButton(
+                        onClick = { confirmQuit = true },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
                         Text(
-                            stringResource(R.string.cast_failed, reason),
-                            style = MaterialTheme.typography.bodySmall,
+                            stringResource(R.string.action_quit),
                             color = MaterialTheme.colorScheme.error,
                         )
                     }
                 }
-            }
+                }
 
-            item {
-                SectionCard(
-                    title = stringResource(R.string.section_stats),
-                    trailing = {
-                        TextButton(onClick = { PhoneBridge.restartLink("user") }) {
-                            Text(stringResource(R.string.action_restart))
-                        }
-                    },
-                ) {
-                    StatRow(
-                        listOf(
-                            stringResource(R.string.stat_sent) to stats.sent.toString(),
-                            stringResource(R.string.stat_delivered) to stats.acked.toString(),
-                            stringResource(R.string.stat_filtered) to counters.skipped.toString(),
-                            stringResource(R.string.stat_lost) to stats.dropped.toString(),
-                            stringResource(R.string.stat_reconnects) to stats.reconnects.toString(),
-                        )
-                    )
-                    counters.lastEvent?.let {
+                PhoneTab.LINK -> {
+                item {
+                    SectionCard(
+                        title = stringResource(R.string.section_pairing),
+                        subtitle = stringResource(
+                            if (revision.let { settings.pairingCode } != null) {
+                                R.string.pairing_done
+                            } else {
+                                R.string.pairing_none
+                            }
+                        ),
+                    ) {
+                        Button(onClick = {
+                            if (settings.pairingCode == null) {
+                                settings.pairingCode = Pairing.generateCode()
+                            }
+                            showPairing = true
+                        }) { Text(stringResource(R.string.action_pair)) }
                         Text(
-                            stringResource(R.string.label_last_event, it),
+                            stringResource(R.string.pairing_hint_phone),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
                         )
                     }
-                    Row {
-                        TextButton(onClick = { showLog = !showLog }) {
+                }
+
+                item {
+                    SectionCard(
+                        title = stringResource(R.string.section_connection),
+                        subtitle = stringResource(R.string.section_connection_hint),
+                    ) {
+                        val kind = revision.let { settings.transportKind }
+                        SegmentedChoice(
+                            options = listOf(TransportKind.BLE, TransportKind.TCP),
+                            selected = kind,
+                            label = {
+                                stringResource(
+                                    if (it == TransportKind.BLE) R.string.transport_bluetooth else R.string.transport_wifi
+                                )
+                            },
+                            onSelect = {
+                                settings.transportKind = it
+                                PhoneBridge.restartLink("transport = $it")
+                            },
+                        )
+                        if (kind == TransportKind.BLE) {
                             Text(
-                                stringResource(if (showLog) R.string.action_hide_log else R.string.action_show_log)
+                                stringResource(R.string.label_who_searches),
+                                style = MaterialTheme.typography.bodyLarge,
                             )
-                        }
-                        TextButton(onClick = { BridgeLog.share(context) }) {
-                            Text(stringResource(R.string.action_share_log))
+                            SegmentedChoice(
+                                options = listOf(true, false),
+                                selected = revision.let { settings.bleServerIsSource },
+                                label = {
+                                    stringResource(if (it) R.string.who_headset else R.string.who_phone)
+                                },
+                                onSelect = {
+                                    settings.bleServerIsSource = it
+                                    PhoneBridge.restartLink("search direction changed")
+                                },
+                            )
+                            Text(
+                                stringResource(R.string.label_who_hint),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        } else {
+                            InfoLine(
+                                stringResource(R.string.label_address),
+                                localAddress() ?: "—",
+                            )
+                            Text(
+                                stringResource(R.string.address_hint_phone),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
                         }
                     }
-                    if (showLog) LogPanel(log)
                 }
-            }
-
-            item { RoleCard() }
-
-            item { AboutCard() }
-
-            item {
-                TextButton(
-                    onClick = { confirmQuit = true },
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text(
-                        stringResource(R.string.action_quit),
-                        color = MaterialTheme.colorScheme.error,
-                    )
                 }
-            }
 
-            item {
-                SectionCard(
-                    title = stringResource(R.string.section_apps),
-                    subtitle = stringResource(R.string.section_apps_hint),
-                ) {
-                    val mode = revision.let { settings.filterMode }
-                    SegmentedChoice(
-                        options = listOf(FilterMode.ALLOW_ALL, FilterMode.ALLOWLIST),
-                        selected = mode,
-                        label = {
-                            stringResource(
-                                if (it == FilterMode.ALLOW_ALL) {
-                                    R.string.filter_all_except
-                                } else {
-                                    R.string.filter_only_checked
+                PhoneTab.STREAM -> {
+                item {
+                    val streaming by ScreenCaptureService.running.collectAsStateWithLifecycle()
+                    val projectionLauncher = rememberLauncherForActivityResult(
+                        ActivityResultContracts.StartActivityForResult()
+                    ) { result ->
+                        val data = result.data
+                        if (result.resultCode == Activity.RESULT_OK && data != null) {
+                            ScreenCaptureService.start(context, result.resultCode, data)
+                        }
+                    }
+                    val shizukuReady by ShizukuInput.available.collectAsStateWithLifecycle()
+                    val controlReady by ScrcpySession.controlReady.collectAsStateWithLifecycle()
+                    var starting by remember { mutableStateOf(false) }
+                    val scope = rememberCoroutineScope()
+                    LaunchedEffect(Unit) { ShizukuInput.connect(context) }
+
+                    SectionCard(
+                        title = stringResource(R.string.section_mirror),
+                        subtitle = stringResource(R.string.section_mirror_hint_phone),
+                    ) {
+                        Button(
+                            enabled = !starting,
+                            onClick = {
+                                if (streaming) {
+                                    ScreenCaptureService.stop(context)
+                                    PhoneBridge.sendMirrorState(false)
+                                    return@Button
                                 }
+
+                                PhoneBridge.sendMirrorState(true)
+
+                                starting = true
+                                scope.launch(Dispatchers.IO) {
+                                    val viaScrcpy = ScrcpySession.isAvailable(context)
+                                    withContext(Dispatchers.Main) {
+                                        if (viaScrcpy) {
+                                            ScreenCaptureService.startWithScrcpy(context)
+                                        } else {
+                                            val manager = context.getSystemService(
+                                                MediaProjectionManager::class.java
+                                            )
+                                            projectionLauncher.launch(manager.createScreenCaptureIntent())
+                                        }
+                                        starting = false
+                                    }
+                                }
+                            },
+                        ) {
+                            Text(
+                                stringResource(
+                                    when {
+                                        streaming -> R.string.action_stop_mirror
+                                        starting -> R.string.mirror_connecting
+                                        else -> R.string.action_start_mirror
+                                    }
+                                )
                             )
-                        },
-                        onSelect = { settings.filterMode = it },
-                    )
-                    OutlinedTextField(
-                        value = query,
-                        onValueChange = { query = it },
-                        label = { Text(stringResource(R.string.hint_search)) },
-                        singleLine = true,
-                        shape = RoundedCornerShape(14.dp),
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    if (apps.isEmpty()) {
+                        }
                         Text(
-                            stringResource(R.string.apps_loading),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    } else {
-                        Text(
-                            pluralStringResource(
-                                R.plurals.apps_count,
-                                visibleApps.size,
-                                visibleApps.size
+                            stringResource(
+                                when {
+                                    controlReady -> R.string.setup_control_adb
+                                    shizukuReady -> R.string.setup_control_shizuku
+                                    else -> R.string.setup_control_hint
+                                }
                             ),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                    }
-                }
-            }
+                        if (!controlReady) {
 
-            items(visibleApps, key = { it.pkg }) { app ->
-                val mode = revision.let { settings.filterMode }
-                val mirrored = revision.let {
-                    if (mode == FilterMode.ALLOW_ALL) app.pkg !in settings.blockedPackages
-                    else app.pkg in settings.allowedPackages
-                }
-                AppRow(app = app, mirrored = mirrored) { on ->
-                    if (mode == FilterMode.ALLOW_ALL) {
-                        settings.blockedPackages =
-                            if (on) settings.blockedPackages - app.pkg else settings.blockedPackages + app.pkg
-                    } else {
-                        settings.allowedPackages =
-                            if (on) settings.allowedPackages + app.pkg else settings.allowedPackages - app.pkg
+                            TextButton(onClick = {
+                                AdbPairPrompt.show(context)
+                                AdbPairPrompt.openPairingScreen(context)
+                            }) { Text(stringResource(R.string.action_pair_adb)) }
+                        }
                     }
                 }
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+
+                item {
+                    SectionCard(
+                        title = stringResource(R.string.section_cast),
+                        subtitle = stringResource(R.string.section_cast_hint_phone),
+                    ) {
+                        val source = revision.let { settings.castSource }
+                        val sensorOff = headset.proximitySensorOff
+
+                        SegmentedChoice(
+                            options = listOf(CastSource.MAGIC, CastSource.SCRCPY),
+                            selected = source,
+                            label = {
+                                stringResource(
+                                    if (it == CastSource.MAGIC) R.string.cast_source_magic
+                                    else R.string.cast_source_scrcpy
+                                )
+                            },
+                            onSelect = { settings.castSource = it },
+                        )
+                        Text(
+                            stringResource(
+                                if (source == CastSource.MAGIC) R.string.cast_source_magic_hint
+                                else R.string.cast_source_scrcpy_hint
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Button(
+                                onClick = { CastActivity.open(context) },
+                                enabled = linkState.isConnected,
+                            ) { Text(stringResource(R.string.action_watch_headset)) }
+                            OutlinedButton(
+                                onClick = { PhoneBridge.setHeadsetProximity(sensorOff != true) },
+                                enabled = linkState.isConnected,
+                            ) {
+                                Text(
+                                    stringResource(
+                                        if (sensorOff == true) R.string.action_enable_proximity
+                                        else R.string.action_disable_proximity
+                                    )
+                                )
+                            }
+                        }
+                        Text(
+                            stringResource(
+                                when (sensorOff) {
+                                    true -> R.string.proximity_off
+                                    false -> R.string.proximity_on
+                                    null -> R.string.proximity_unknown
+                                }
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        castError?.let { reason ->
+                            Text(
+                                stringResource(R.string.cast_failed, reason),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error,
+                            )
+                        }
+                    }
+                }
+                }
+
+                PhoneTab.NOTIFICATIONS -> {
+                item {
+                    SectionCard(
+                        title = stringResource(R.string.section_notifications),
+                        subtitle = stringResource(R.string.section_notifications_hint),
+                    ) {
+                        SettingRow(
+                            title = stringResource(R.string.label_show_source),
+                            subtitle = stringResource(R.string.label_show_source_hint),
+                            checked = revision.let { settings.showSourceApp },
+                        ) { settings.showSourceApp = it }
+                        SettingRow(
+                            title = stringResource(R.string.label_persistent),
+                            subtitle = stringResource(R.string.label_persistent_hint),
+                            checked = revision.let { settings.mirrorOngoing },
+                        ) { settings.mirrorOngoing = it }
+                        SettingRow(
+                            title = stringResource(R.string.label_actions),
+                            subtitle = stringResource(R.string.label_actions_hint),
+                            checked = revision.let { settings.mirrorActions },
+                        ) { settings.mirrorActions = it }
+                        SettingRow(
+                            title = stringResource(R.string.label_codes),
+                            subtitle = stringResource(R.string.label_codes_hint),
+                            checked = revision.let { settings.offerCodes },
+                        ) { settings.offerCodes = it }
+                        SettingRow(
+                            title = stringResource(R.string.label_dnd),
+                            subtitle = stringResource(
+                                if (dndReady) R.string.label_dnd_hint else R.string.label_dnd_permission
+                            ),
+                            checked = revision.let { settings.autoDnd },
+                        ) { value ->
+                            settings.autoDnd = value
+
+                            if (value && !DoNotDisturb.granted(context)) {
+                                permissionTick++
+                                context.startActivity(
+                                    Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)
+                                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                )
+                            }
+                        }
+                        SettingRow(
+                            title = stringResource(R.string.label_presence),
+                            subtitle = stringResource(R.string.label_presence_hint),
+                            checked = revision.let { settings.presenceGated },
+                        ) { settings.presenceGated = it }
+                        SettingRow(
+                            title = stringResource(R.string.label_enabled),
+                            subtitle = stringResource(R.string.label_enabled_hint),
+                            checked = revision.let { settings.enabled },
+                        ) { value ->
+                            settings.enabled = value
+                            if (value) BridgeService.start(context) else PhoneBridge.stopLink()
+                        }
+                    }
+                }
+
+                item {
+                    SectionCard(
+                        title = stringResource(R.string.section_apps),
+                        subtitle = stringResource(R.string.section_apps_hint),
+                    ) {
+                        val mode = revision.let { settings.filterMode }
+                        SegmentedChoice(
+                            options = listOf(FilterMode.ALLOW_ALL, FilterMode.ALLOWLIST),
+                            selected = mode,
+                            label = {
+                                stringResource(
+                                    if (it == FilterMode.ALLOW_ALL) {
+                                        R.string.filter_all_except
+                                    } else {
+                                        R.string.filter_only_checked
+                                    }
+                                )
+                            },
+                            onSelect = { settings.filterMode = it },
+                        )
+                        OutlinedTextField(
+                            value = query,
+                            onValueChange = { query = it },
+                            label = { Text(stringResource(R.string.hint_search)) },
+                            singleLine = true,
+                            shape = RoundedCornerShape(14.dp),
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        if (apps.isEmpty()) {
+                            Text(
+                                stringResource(R.string.apps_loading),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        } else {
+                            Text(
+                                pluralStringResource(
+                                    R.plurals.apps_count,
+                                    visibleApps.size,
+                                    visibleApps.size
+                                ),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+
+                items(visibleApps, key = { it.pkg }) { app ->
+                    val mode = revision.let { settings.filterMode }
+                    val mirrored = revision.let {
+                        if (mode == FilterMode.ALLOW_ALL) app.pkg !in settings.blockedPackages
+                        else app.pkg in settings.allowedPackages
+                    }
+                    AppRow(app = app, mirrored = mirrored) { on ->
+                        if (mode == FilterMode.ALLOW_ALL) {
+                            settings.blockedPackages =
+                                if (on) settings.blockedPackages - app.pkg else settings.blockedPackages + app.pkg
+                        } else {
+                            settings.allowedPackages =
+                                if (on) settings.allowedPackages + app.pkg else settings.allowedPackages - app.pkg
+                        }
+                    }
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                }
+                }
             }
 
             item { Spacer(Modifier.height(28.dp)) }
         }
     }
+}
+
+private enum class PhoneTab(@StringRes val label: Int, val icon: ImageVector) {
+    HOME(R.string.tab_home, Icons.Filled.Home),
+    LINK(R.string.tab_link, Icons.Filled.Share),
+    STREAM(R.string.tab_stream, Icons.Filled.PlayArrow),
+    NOTIFICATIONS(R.string.tab_notifications, Icons.Filled.Notifications),
 }
 
 @Composable

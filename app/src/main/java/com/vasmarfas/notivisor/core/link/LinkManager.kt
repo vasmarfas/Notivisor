@@ -10,6 +10,7 @@ import com.vasmarfas.notivisor.core.transport.LinkRole
 import com.vasmarfas.notivisor.core.transport.LinkState
 import com.vasmarfas.notivisor.core.transport.NotificationTransport
 import com.vasmarfas.notivisor.core.transport.TransportFactory
+import com.vasmarfas.notivisor.core.util.AppVersion
 import com.vasmarfas.notivisor.core.util.BridgeLog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -28,6 +29,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.util.concurrent.atomic.AtomicLong
+
+data class PeerApp(val version: String?, val build: Int?)
 
 data class LinkStats(
     val sent: Long = 0,
@@ -58,6 +61,9 @@ class LinkManager(
 
     private val _stats = MutableStateFlow(LinkStats())
     val stats: StateFlow<LinkStats> = _stats.asStateFlow()
+
+    private val _peer = MutableStateFlow<PeerApp?>(null)
+    val peer: StateFlow<PeerApp?> = _peer.asStateFlow()
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val queueMutex = Mutex()
@@ -100,7 +106,9 @@ class LinkManager(
                     ", encryption ${if (codec.encrypted) "on" else "OFF"}"
         )
 
-        val created = TransportFactory.create(appContext, config, { codec }, deviceLabel)
+        val created = TransportFactory.create(appContext, config, { codec }, deviceLabel) { host ->
+            settings.tcpHost = host
+        }
         transport = created
 
         jobs += scope.launch {
@@ -294,7 +302,12 @@ class LinkManager(
 
             Action.HELLO -> {
                 lastPeerSeq = 0L
-                BridgeLog.i(SCOPE, "peer says hello: ${envelope.app} (${envelope.pkg})")
+                _peer.value = PeerApp(envelope.ver, envelope.build)
+                BridgeLog.i(
+                    SCOPE,
+                    "peer says hello: ${envelope.app} (${envelope.pkg}), " +
+                            "app ${envelope.ver ?: "version not reported"}"
+                )
             }
 
             else -> _incoming.emit(envelope)
@@ -321,7 +334,14 @@ class LinkManager(
         _stats.value = _stats.value.copy(connectedSince = state.since)
         BridgeLog.i(SCOPE, "link up with ${state.peer}")
         scope.launch {
-            transport?.send(Envelope.hello(role.name.lowercase(), deviceLabel))
+            transport?.send(
+                Envelope.hello(
+                    role.name.lowercase(),
+                    deviceLabel,
+                    AppVersion.name(appContext),
+                    AppVersion.code(appContext),
+                )
+            )
             wakeup.trySend(Unit)
         }
     }
@@ -331,6 +351,7 @@ class LinkManager(
         pendingPingAt = 0L
         peerVerified = false
         transportConnectedAt = 0L
+        _peer.value = null
         BridgeLog.w(SCOPE, "link down")
     }
 

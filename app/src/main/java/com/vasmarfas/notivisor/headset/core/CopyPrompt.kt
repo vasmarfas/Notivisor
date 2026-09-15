@@ -7,6 +7,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import com.vasmarfas.notivisor.R
+import com.vasmarfas.notivisor.core.util.vrTagged
 import com.vasmarfas.notivisor.headset.ui.CopyActivity
 
 object CopyPrompt {
@@ -45,6 +46,7 @@ object CopyPrompt {
                 .setSmallIcon(R.drawable.ic_stat_bridge)
                 .setContentIntent(open)
                 .setAutoCancel(true)
+                .vrTagged()
                 .build()
         )
     }

@@ -12,8 +12,9 @@ object TransportFactory {
         config: TransportConfig,
         codecProvider: () -> WireCodec,
         deviceLabel: String,
+        onHostFound: (String) -> Unit = {},
     ): NotificationTransport = when (config.kind) {
-        TransportKind.TCP -> TcpTransport(context, config, codecProvider)
+        TransportKind.TCP -> TcpTransport(context, config, codecProvider, onHostFound)
         TransportKind.BLE -> if (config.isBleServer) {
             BleServerTransport(context, codecProvider, deviceLabel)
         } else {

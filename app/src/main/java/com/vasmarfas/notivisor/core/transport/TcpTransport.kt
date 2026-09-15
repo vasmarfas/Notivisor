@@ -35,6 +35,7 @@ class TcpTransport(
     context: Context,
     private val config: TransportConfig,
     private val codecProvider: () -> WireCodec,
+    private val onHostFound: (String) -> Unit = {},
 ) : NotificationTransport {
 
     override val kind = TransportKind.TCP
@@ -102,7 +103,7 @@ class TcpTransport(
                 }
                 serverSocket = server
                 nsd.register(config.tcpPort)
-                _state.value = LinkState.Waiting("listening on :${config.tcpPort}")
+                _state.value = LinkState.Waiting("listening")
                 BridgeLog.i(SCOPE, "listening on 0.0.0.0:${config.tcpPort}")
 
                 while (scope.isActive) {
@@ -112,7 +113,7 @@ class TcpTransport(
                     BridgeLog.i(SCOPE, "accepted ${socket.inetAddress.hostAddress}")
                     serve(socket)
                     if (scope.isActive) _state.value =
-                        LinkState.Waiting("listening on :${config.tcpPort}")
+                        LinkState.Waiting("listening")
                 }
             } catch (e: CancellationException) {
                 throw e
@@ -128,27 +129,41 @@ class TcpTransport(
 
     private suspend fun runClient() {
         var backoff = 1_000L
+        var refusals = 0
+        var host = config.tcpHost
         while (scope.isActive) {
-            val host = config.tcpHost ?: nsd.discoverHost()
-            if (host == null) {
-                _state.value = LinkState.Waiting("no host configured, discovering")
-                delay(5_000.milliseconds)
+            if (host == null || refusals >= REDISCOVER_AFTER) {
+                _state.value = LinkState.Waiting("looking for the phone")
+                refusals = 0
+                nsd.discoverHost()?.let { found ->
+                    if (found != host) {
+                        BridgeLog.i(SCOPE, "peer announced itself at $found")
+                        onHostFound(found)
+                    }
+                    host = found
+                }
+            }
+            val target = host
+            if (target == null) {
+                delay(DISCOVERY_RETRY_MS.milliseconds)
                 continue
             }
             try {
-                _state.value = LinkState.Connecting("$host:${config.tcpPort}")
+                _state.value = LinkState.Connecting(target)
                 val socket = Socket()
                 withContext(Dispatchers.IO) {
-                    socket.connect(InetSocketAddress(host, config.tcpPort), CONNECT_TIMEOUT_MS)
+                    socket.connect(InetSocketAddress(target, config.tcpPort), CONNECT_TIMEOUT_MS)
                 }
-                BridgeLog.i(SCOPE, "connected to $host:${config.tcpPort}")
+                BridgeLog.i(SCOPE, "connected to $target:${config.tcpPort}")
                 backoff = 1_000L
+                refusals = 0
                 serve(socket)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 if (!scope.isActive) return
-                BridgeLog.w(SCOPE, "connect to $host failed: ${e.message}")
+                refusals++
+                BridgeLog.w(SCOPE, "connect to $target failed: ${e.message}")
                 _state.value = LinkState.Failed(e.message ?: "connect failed")
             }
             delay(backoff.milliseconds)
@@ -212,5 +227,7 @@ class TcpTransport(
         const val CONNECT_TIMEOUT_MS = 5_000
         const val READ_TIMEOUT_MS = 45_000
         const val MAX_BACKOFF_MS = 30_000L
+        const val REDISCOVER_AFTER = 2
+        const val DISCOVERY_RETRY_MS = 5_000L
     }
 }

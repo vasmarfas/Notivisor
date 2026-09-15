@@ -22,6 +22,7 @@ import com.vasmarfas.notivisor.core.protocol.RemoteAction
 import com.vasmarfas.notivisor.core.settings.BridgeSettings
 import com.vasmarfas.notivisor.core.settings.OverlayMode
 import com.vasmarfas.notivisor.core.util.BridgeLog
+import com.vasmarfas.notivisor.core.util.vrTagged
 import com.vasmarfas.notivisor.headset.service.RelayReceiver
 import com.vasmarfas.notivisor.headset.ui.CopyActivity
 import kotlinx.coroutines.CoroutineScope
@@ -196,7 +197,7 @@ class NotificationPublisher(context: Context, private val settings: BridgeSettin
             }
         }
 
-        manager.notify(id, builder.build())
+        manager.notify(id, builder.vrTagged().build())
         when (settings.overlayMode) {
             OverlayMode.PANEL -> overlay.show(envelope.title ?: app, body)
             OverlayMode.TOAST -> overlay.toast(envelope.title ?: app, body)

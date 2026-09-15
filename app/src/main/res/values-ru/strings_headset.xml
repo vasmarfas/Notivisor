@@ -15,11 +15,17 @@
     <string name="label_code_hint">16 цифр с экрана телефона</string>
     <string name="label_host">Адрес телефона</string>
     <string name="label_port">Порт</string>
+    <string name="address_unknown">пока неизвестен</string>
+    <string name="action_find_phone">Найти телефон</string>
+    <string name="action_searching">Ищу…</string>
+    <string name="action_manual_address">Ввести вручную</string>
+    <string name="find_phone_hint">Телефон объявляет себя в сети, так что адрес вводить не нужно.</string>
+    <string name="find_phone_failed">Ничего не нашлось. Проверьте, что оба устройства в одной сети Wi-Fi и приложение на телефоне запущено.</string>
 
     <string name="label_who_hint_headset">Должно совпадать с настройкой на телефоне.</string>
     <string name="label_gap">Пауза между уведомлениями</string>
     <string name="label_gap_hint">Если уведомления приходят пачкой, пауза не даёт системе проглотить часть из них.</string>
-    <string name="gap_none">Без паузы</string>
+    <string name="gap_none">Нет</string>
     <string name="gap_seconds">%1$d с</string>
 
     <string name="action_scan">Сканировать QR</string>

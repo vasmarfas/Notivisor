@@ -97,6 +97,8 @@ data class Envelope(
     val prox: Boolean? = null,
     val avatar: String? = null,
     val picture: String? = null,
+    val ver: String? = null,
+    val build: Int? = null,
 ) {
 
     fun toJson(): String {
@@ -124,6 +126,8 @@ data class Envelope(
         prox?.let { o.put("prox", it) }
         avatar?.let { o.put("av", it) }
         picture?.let { o.put("pic", it) }
+        ver?.let { o.put("ver", it) }
+        build?.let { o.put("build", it) }
         if (actions.isNotEmpty()) {
             val array = JSONArray()
             actions.forEach { act ->
@@ -183,6 +187,8 @@ data class Envelope(
                 prox = if (o.has("prox")) o.optBoolean("prox") else null,
                 avatar = o.optStringOrNull("av"),
                 picture = o.optStringOrNull("pic"),
+                ver = o.optStringOrNull("ver"),
+                build = if (o.has("build")) o.optInt("build") else null,
             )
         }
 
@@ -193,12 +199,14 @@ data class Envelope(
             Envelope(action = Action.PONG, seq = seq, ts = System.currentTimeMillis())
 
         fun ack(seq: Long, key: String?) = Envelope(action = Action.ACK, seq = seq, key = key)
-        fun hello(role: String, device: String) =
+        fun hello(role: String, device: String, version: String?, build: Int) =
             Envelope(
                 action = Action.HELLO,
                 pkg = role,
                 app = device,
-                ts = System.currentTimeMillis()
+                ts = System.currentTimeMillis(),
+                ver = version,
+                build = build,
             )
     }
 }

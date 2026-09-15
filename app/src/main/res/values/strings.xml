@@ -22,6 +22,14 @@
     <string name="detail_waiting">%1$s · headset is out of range or switched off</string>
     <string name="detail_failed">%1$s · details in the log</string>
 
+    <string name="tab_home">Home</string>
+    <string name="tab_link">Link</string>
+    <string name="tab_stream">Streaming</string>
+    <string name="tab_notifications">Notifications</string>
+    <string name="action_ok">OK</string>
+    <string name="version_mismatch">Versions differ: %1$s here, %2$s on the other device. Some things may not work until both are updated.</string>
+    <string name="version_older">The other device runs an older version that does not report itself. Update both if something behaves oddly.</string>
+
     <string name="section_setup">Before you start</string>
     <string name="section_setup_hint">Two settings the system needs from you.</string>
     <string name="section_connection">Connection</string>
@@ -55,10 +63,12 @@
     <string name="transport_bluetooth">Bluetooth</string>
     <string name="transport_wifi">Wi-Fi</string>
     <string name="label_who_searches">Which side searches</string>
-    <string name="who_headset">Headset finds the phone</string>
-    <string name="who_phone">Phone finds the headset</string>
+    <string name="who_headset">Headset</string>
+    <string name="who_phone">Phone</string>
     <string name="label_who_hint">The headset searching is usually more reliable. Change this only if the connection will not come up.</string>
     <string name="label_address">This phone</string>
+    <string name="address_hint_phone">The headset picks this address up by itself, and it also travels inside the QR code.</string>
+    <string name="pairing_hint_phone">Show the code and scan it from the headset: the address, the transport and the encryption key all travel inside it.</string>
 
     <string name="label_show_source">App name in the notification</string>
     <string name="label_show_source_hint">Each notification is labelled with the app it came from.</string>
@@ -101,9 +111,9 @@
     <string name="quit_confirm">Quit</string>
     <string name="quit_cancel">Cancel</string>
     <string name="action_copy_code">Copy %1$s</string>
-    <string name="action_send_clipboard">Send clipboard</string>
+    <string name="action_send_clipboard">Clipboard</string>
     <string name="action_find_headset">Find the headset</string>
-    <string name="action_send_text">Type and send text</string>
+    <string name="action_send_text">Type text</string>
 
     <string name="share_target">Open in headset</string>
     <string name="share_sent">Sent to the headset</string>
@@ -130,7 +140,7 @@
 
     <string name="channel_mirror">Screen mirror</string>
     <string name="mirror_notification_text">Streaming this screen to the headset</string>
-    <string name="section_mirror">Screen mirror</string>
+    <string name="section_mirror">Phone screen in the headset</string>
     <string name="section_mirror_hint">Taps reach the phone once its control service is on</string>
     <string name="section_mirror_hint_phone">Wi-Fi only; the headset connects to this phone directly</string>
     <string name="mirror_idle">Not connected</string>
@@ -140,7 +150,7 @@
     <string name="mirror_needs_wifi">Switch to Wi-Fi and set the phone\'s address first</string>
     <string name="action_start_mirror">Start mirroring</string>
     <string name="action_stop_mirror">Stop mirroring</string>
-    <string name="action_open_mirror_window">Open in a window</string>
+    <string name="action_open_mirror_window">Open window</string>
     <string name="action_close_window">Close</string>
     <string name="action_key_back">Back</string>
     <string name="action_key_home">Home</string>
@@ -156,7 +166,7 @@
     <string name="shade_dropped">The system accepts each notification and then drops it — this headset does not show notifications from sideloaded apps.</string>
     <string name="action_open_notification_settings">Notification settings</string>
     <string name="setting_overlay_hint">Where the system will not show notifications, the app can put them on screen itself. A panel needs permission to draw over other apps. A toast uses the same layer the headset draws its own messages on.</string>
-    <string name="overlay_off">System only</string>
+    <string name="overlay_off">System</string>
     <string name="overlay_panel">Panel</string>
     <string name="overlay_toast">Toast</string>
     <string name="action_allow_overlay">Allow drawing over apps</string>
@@ -164,7 +174,7 @@
 
     <string name="channel_cast">Headset view</string>
     <string name="cast_notification_text">Streaming this headset to the phone</string>
-    <string name="section_cast">Headset view</string>
+    <string name="section_cast">Headset view on this phone</string>
     <string name="section_cast_hint_phone">Watch and hear what the headset does; needs the same Wi-Fi</string>
     <string name="section_cast_hint_headset">Sends this headset\'s view and sound to the phone over Wi-Fi</string>
     <string name="cast_idle">Not casting</string>
