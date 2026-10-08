@@ -3,6 +3,7 @@ package com.vasmarfas.notivisor.core.transport
 import android.content.Context
 import com.vasmarfas.notivisor.core.protocol.Envelope
 import com.vasmarfas.notivisor.core.protocol.WireCodec
+import com.vasmarfas.notivisor.core.transport.ble.BlePermissions
 import com.vasmarfas.notivisor.core.util.BridgeLog
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -61,6 +62,14 @@ class TcpTransport(
 
     override fun start() {
         if (job?.isActive == true) return
+        BlePermissions.missing(appContext, LocalNetwork.permissions).let { missing ->
+            if (missing.isNotEmpty()) {
+                val reason = "missing permissions: ${missing.joinToString { it.substringAfterLast('.') }}"
+                BridgeLog.w(SCOPE, reason)
+                _state.value = LinkState.Failed(reason)
+                return
+            }
+        }
         _state.value = LinkState.Starting
         job = scope.launch {
             if (config.role == LinkRole.SOURCE) runServer() else runClient()

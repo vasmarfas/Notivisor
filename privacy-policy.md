@@ -50,6 +50,8 @@ The App requests the following permissions and uses them only for the stated pur
   forwarded, as described in Section 1.
 - **Bluetooth** (`BLUETOOTH_SCAN`, `BLUETOOTH_CONNECT`, `BLUETOOTH_ADVERTISE`) — to discover and
   connect to your paired device.
+- **Local network** (`ACCESS_LOCAL_NETWORK`, Android 17 and later) — to connect to your paired
+  device over Wi-Fi, find it on the network, and stream the screen between the two devices.
 - **Camera** (headset installation only) — to scan the pairing QR code shown on your phone. No image
   is stored or transmitted; it is decoded on device and discarded immediately.
 - **Post notifications** — to display forwarded notifications on the headset and to show the App's

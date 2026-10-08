@@ -75,6 +75,7 @@ import com.vasmarfas.notivisor.core.protocol.PairingPayload
 import com.vasmarfas.notivisor.core.settings.BridgeSettings
 import com.vasmarfas.notivisor.core.settings.OverlayMode
 import com.vasmarfas.notivisor.core.transport.LinkState
+import com.vasmarfas.notivisor.core.transport.LocalNetwork
 import com.vasmarfas.notivisor.core.transport.NsdHelper
 import com.vasmarfas.notivisor.core.transport.TransportConfig
 import com.vasmarfas.notivisor.core.transport.TransportKind
@@ -141,6 +142,7 @@ fun HeadsetScreen() {
         val wanted = buildList {
             addAll(BlePermissions.forClient())
             addAll(BlePermissions.forServer())
+            addAll(LocalNetwork.permissions)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 add(Manifest.permission.POST_NOTIFICATIONS)
             }

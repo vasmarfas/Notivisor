@@ -44,8 +44,8 @@
     <string name="setup_listener_hint">Without it the app cannot see your notifications.</string>
     <string name="setup_battery">Unrestricted battery use</string>
     <string name="setup_battery_hint">Otherwise the system stops the app once the screen goes off.</string>
-    <string name="setup_permissions">Bluetooth access</string>
-    <string name="setup_permissions_hint">Needed for the headset to find this phone.</string>
+    <string name="setup_permissions">Nearby devices</string>
+    <string name="setup_permissions_hint">Bluetooth, and on Android 17 the local network too. Needed for the headset to find this phone.</string>
 
     <string name="action_test">Send a test</string>
     <string name="action_pair">Connect a headset</string>

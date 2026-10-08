@@ -84,7 +84,8 @@ JDK 17. Everything else comes from the Gradle wrapper.
 1. **Notification access** — Android won't let any app read notifications without it.
 2. **Unrestricted battery use** — skip this and the system stops the app about a minute after your
    screen goes off, Samsung especially. The checklist links straight to the right screen.
-3. **Bluetooth permissions.**
+3. **Nearby devices** — Bluetooth, and on Android 17 the local network as well. Without the latter
+   the Wi-Fi link cannot reach the headset.
 
 Then tap **Connect a headset** and a QR code appears.
 

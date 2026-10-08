@@ -42,8 +42,8 @@
     <string name="setup_listener_hint">Без него приложение не видит ваших уведомлений.</string>
     <string name="setup_battery">Работа без ограничений батареи</string>
     <string name="setup_battery_hint">Иначе система остановит приложение, как только погаснет экран.</string>
-    <string name="setup_permissions">Доступ к Bluetooth</string>
-    <string name="setup_permissions_hint">Нужен, чтобы шлем смог найти этот телефон.</string>
+    <string name="setup_permissions">Устройства поблизости</string>
+    <string name="setup_permissions_hint">Bluetooth, а на Android 17 ещё и локальная сеть. Без этого шлем не найдёт телефон.</string>
 
     <string name="action_test">Проверить</string>
     <string name="action_pair">Подключить шлем</string>

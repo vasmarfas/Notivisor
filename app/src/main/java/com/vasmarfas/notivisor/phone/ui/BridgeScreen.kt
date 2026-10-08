@@ -84,6 +84,7 @@ import com.vasmarfas.notivisor.core.protocol.MediaKey
 import com.vasmarfas.notivisor.core.protocol.Pairing
 import com.vasmarfas.notivisor.core.settings.FilterMode
 import com.vasmarfas.notivisor.core.transport.LinkState
+import com.vasmarfas.notivisor.core.transport.LocalNetwork
 import com.vasmarfas.notivisor.core.transport.TransportKind
 import com.vasmarfas.notivisor.core.transport.ble.BlePermissions
 import com.vasmarfas.notivisor.core.ui.AboutCard
@@ -899,6 +900,7 @@ private fun missingPermissions(context: Context): List<String> {
     val wanted = buildList {
         addAll(BlePermissions.forServer())
         addAll(BlePermissions.forClient())
+        addAll(LocalNetwork.permissions)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) add(Manifest.permission.POST_NOTIFICATIONS)
     }.distinct()
     return BlePermissions.missing(context, wanted)
