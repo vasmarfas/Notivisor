@@ -6,6 +6,8 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.media.projection.MediaProjectionManager
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings
@@ -194,7 +196,7 @@ fun BridgeScreen() {
             showPairing = false
         } else {
             PairingSheet(
-                payload = settings.pairingPayload(localAddress()).encode(),
+                payload = settings.pairingPayload(localAddress(context)).encode(),
                 code = code,
                 onDismiss = { showPairing = false },
             )
@@ -497,7 +499,7 @@ fun BridgeScreen() {
                         } else {
                             InfoLine(
                                 stringResource(R.string.label_address),
-                                localAddress() ?: "—",
+                                localAddress(context) ?: "—",
                             )
                             Text(
                                 stringResource(R.string.address_hint_phone),
@@ -935,12 +937,27 @@ private fun requestIgnoreBattery(context: Context) {
     }
 }
 
-private fun localAddress(): String? = runCatching {
+private fun localAddress(context: Context): String? = runCatching {
+    val manager = context.getSystemService(ConnectivityManager::class.java) ?: return@runCatching null
+    @Suppress("DEPRECATION")
+    val networks = manager.allNetworks.toList()
+    val wifi = networks.firstOrNull { network ->
+        val capabilities = manager.getNetworkCapabilities(network) ?: return@firstOrNull false
+        capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) &&
+                capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN)
+    }
+    val wifiAddress = wifi?.let { manager.getLinkProperties(it) }
+        ?.linkAddresses
+        ?.map { it.address }
+        ?.firstOrNull { it is Inet4Address }
+    if (wifiAddress != null) return@runCatching wifiAddress.hostAddress
+
+    val claimed = networks.mapNotNull { manager.getLinkProperties(it)?.interfaceName }.toSet()
     NetworkInterface.getNetworkInterfaces()
         .toList()
-        .filter { it.isUp && !it.isLoopback }
+        .filter { it.isUp && !it.isLoopback && it.name !in claimed }
         .flatMap { it.inetAddresses.toList() }
         .filterIsInstance<Inet4Address>()
-        .firstOrNull()
+        .firstOrNull { it.isSiteLocalAddress }
         ?.hostAddress
 }.getOrNull()
