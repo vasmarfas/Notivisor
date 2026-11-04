@@ -51,6 +51,8 @@ object Action {
     const val CAST_STOP = "cast_stop"
 
     const val PROXIMITY = "proximity"
+
+    const val FILE_OFFER = "file_offer"
 }
 
 object MediaKey {
@@ -99,6 +101,8 @@ data class Envelope(
     val picture: String? = null,
     val ver: String? = null,
     val build: Int? = null,
+    val mime: String? = null,
+    val size: Long? = null,
 ) {
 
     fun toJson(): String {
@@ -128,6 +132,8 @@ data class Envelope(
         picture?.let { o.put("pic", it) }
         ver?.let { o.put("ver", it) }
         build?.let { o.put("build", it) }
+        mime?.let { o.put("mime", it) }
+        size?.let { o.put("size", it) }
         if (actions.isNotEmpty()) {
             val array = JSONArray()
             actions.forEach { act ->
@@ -189,6 +195,8 @@ data class Envelope(
                 picture = o.optStringOrNull("pic"),
                 ver = o.optStringOrNull("ver"),
                 build = if (o.has("build")) o.optInt("build") else null,
+                mime = o.optStringOrNull("mime"),
+                size = o.optLongOrNull("size"),
             )
         }
 

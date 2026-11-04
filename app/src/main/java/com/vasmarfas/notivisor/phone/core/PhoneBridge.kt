@@ -8,6 +8,7 @@ import com.vasmarfas.notivisor.core.link.LinkManager
 import com.vasmarfas.notivisor.core.protocol.Action
 import com.vasmarfas.notivisor.core.protocol.Envelope
 import com.vasmarfas.notivisor.core.settings.BridgeSettings
+import com.vasmarfas.notivisor.core.transfer.FileReceiver
 import com.vasmarfas.notivisor.core.transport.LinkRole
 import com.vasmarfas.notivisor.core.util.BridgeLog
 import com.vasmarfas.notivisor.core.util.Clipboard
@@ -174,6 +175,10 @@ object PhoneBridge {
             Action.ICON_REQ -> sendIcon(envelope.pkg ?: return)
 
             Action.CLIP -> Clipboard.write(appContext, envelope.data ?: return)
+
+            Action.OPEN -> LinkPrompt.show(appContext, envelope.data ?: return)
+
+            Action.FILE_OFFER -> FileReceiver.accept(appContext, link, settings, envelope)
 
             Action.STATUS -> {
                 _headset.value = HeadsetStatus(

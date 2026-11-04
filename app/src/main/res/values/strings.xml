@@ -115,9 +115,29 @@
     <string name="action_find_headset">Find the headset</string>
     <string name="action_send_text">Type text</string>
 
-    <string name="share_target">Open in headset</string>
-    <string name="share_sent">Sent to the headset</string>
-    <string name="share_no_link">No link in what you shared</string>
+    <string name="share_target">Send via Notivisor</string>
+    <string name="share_sent">Sent to the other device</string>
+    <string name="share_empty">Nothing to send</string>
+    <string name="share_sending">Sending to the other device</string>
+    <string name="share_needs_wifi">Files go over Wi-Fi. Switch the connection to Wi-Fi first</string>
+    <string name="share_needs_pairing">Pair the devices with a code to send files</string>
+    <string name="share_needs_link">The other device is not connected</string>
+
+    <string name="action_send_files">Send files</string>
+    <string name="file_picker_missing">This device has no file picker. Use Share in another app</string>
+    <string name="channel_files">Sending files</string>
+    <string name="channel_files_received">Received files</string>
+    <string name="file_sending">Sending files</string>
+    <string name="file_sent_count">Sent: %1$d of %2$d</string>
+    <string name="file_not_picked_up">The other device did not take the file. Update Notivisor on it and check the Wi-Fi network</string>
+    <string name="file_no_space">Not enough space on the other device</string>
+    <string name="file_unsupported">The other device runs an Android version that cannot save files</string>
+    <string name="file_interrupted">The transfer was interrupted</string>
+    <string name="file_saved">Saved to Downloads</string>
+    <string name="file_not_saved">File did not arrive</string>
+
+    <string name="channel_links">Links from the headset</string>
+    <string name="link_prompt_title">Link from the headset</string>
 
     <string name="label_actions">Notification buttons</string>
     <string name="label_actions_hint">Reply and act on notifications from inside the headset.</string>

@@ -41,6 +41,7 @@ where nothing else can.
 - Notification photos and sender avatars come across too, over Wi-Fi
 - App icons travel across once and are cached, so notifications look like themselves
 - Send the clipboard across, or share a link straight into the headset's browser
+- Send photos and files both ways over Wi-Fi, from the Send files button or the share menu, into Downloads
 - Silence the phone automatically while the headset has your notifications
 - Headset battery on the phone's screen, and a sound to find a headset you have put down
 - Only forward while the headset is actually worn, if you want it that way

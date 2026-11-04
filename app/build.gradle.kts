@@ -11,8 +11,8 @@ android {
         applicationId = "com.vasmarfas.notivisor"
         minSdk = 26
         targetSdk = 37
-        versionCode = 8
-        versionName = "1.3.1"
+        versionCode = 10
+        versionName = "1.4.0"
     }
 
     buildTypes {
@@ -70,7 +70,10 @@ dependencies {
     implementation(libs.androidx.camera.core)
     implementation(libs.androidx.camera.camera2)
     implementation(libs.androidx.camera.lifecycle)
-    implementation(libs.androidx.camera.view)
+    implementation(libs.androidx.camera.view) {
+        exclude(group = "androidx.appcompat")
+        exclude(group = "androidx.fragment")
+    }
 
     implementation(libs.shizuku.api)
     implementation(libs.shizuku.provider)
@@ -79,4 +82,6 @@ dependencies {
     implementation(libs.libadb.android)
     implementation(libs.sun.security.android)
     implementation(libs.conscrypt.android)
+
+    testImplementation(libs.junit)
 }

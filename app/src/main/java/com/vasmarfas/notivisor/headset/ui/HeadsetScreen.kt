@@ -86,6 +86,7 @@ import com.vasmarfas.notivisor.core.ui.InfoRow
 import com.vasmarfas.notivisor.core.ui.LogPanel
 import com.vasmarfas.notivisor.core.ui.SectionCard
 import com.vasmarfas.notivisor.core.ui.SegmentedChoice
+import com.vasmarfas.notivisor.core.ui.SendFilesButton
 import com.vasmarfas.notivisor.core.ui.SettingRow
 import com.vasmarfas.notivisor.core.ui.StatRow
 import com.vasmarfas.notivisor.core.ui.StatusBanner
@@ -288,6 +289,13 @@ fun HeadsetScreen() {
                             modifier = Modifier.weight(1f),
                         ) { Text(stringResource(R.string.action_test_notification)) }
                     }
+                }
+
+                item {
+                    SendFilesButton(
+                        enabled = linkState.isConnected,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                 }
 
                 item {

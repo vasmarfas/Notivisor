@@ -12,6 +12,7 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.drawable.Icon
+import android.net.Uri
 import android.util.Base64
 import androidx.core.graphics.createBitmap
 import com.vasmarfas.notivisor.R
@@ -20,9 +21,13 @@ import com.vasmarfas.notivisor.core.control.ScrcpySession
 import com.vasmarfas.notivisor.core.protocol.Action
 import com.vasmarfas.notivisor.core.protocol.ChatMessage
 import com.vasmarfas.notivisor.core.protocol.Envelope
+import com.vasmarfas.notivisor.core.protocol.FileStream
 import com.vasmarfas.notivisor.core.protocol.Pairing
 import com.vasmarfas.notivisor.core.protocol.RemoteAction
 import com.vasmarfas.notivisor.core.protocol.ScreenControl
+import com.vasmarfas.notivisor.core.transfer.FileReceiver
+import com.vasmarfas.notivisor.core.transfer.FileSender
+import com.vasmarfas.notivisor.core.transport.TransportConfig
 import com.vasmarfas.notivisor.core.transport.TransportKind
 import com.vasmarfas.notivisor.core.util.BridgeLog
 import com.vasmarfas.notivisor.phone.core.CastPrompt
@@ -35,8 +40,14 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.ByteArrayOutputStream
+import java.io.File
+import java.io.IOException
+import java.io.InputStream
+import java.net.ServerSocket
+import java.security.MessageDigest
 import java.text.SimpleDateFormat
 import java.util.Locale
+import kotlin.random.Random
 
 class DebugReceiver : BroadcastReceiver() {
 
@@ -232,6 +243,47 @@ class DebugReceiver : BroadcastReceiver() {
                 )
                 BridgeLog.i(SCOPE, "rich content sample queued (${picture.length} b64 chars)")
             }
+
+            "filetest" -> Thread {
+                val key = Pairing.deriveKey("0".repeat(Pairing.CODE_LENGTH))
+                val file = File(context.cacheDir, "test-notivisor-${System.currentTimeMillis()}.bin")
+                file.writeBytes(Random.nextBytes(intent.getIntExtra("size", 300_000)))
+                val md5 = MessageDigest.getInstance("MD5").digest(file.readBytes())
+                    .joinToString("") { "%02x".format(it) }
+                val outcome = FileSender.send(
+                    context,
+                    Uri.fromFile(file),
+                    key,
+                    onOffer = { offer ->
+                        Thread { FileReceiver.receive(context, "127.0.0.1", key, offer) }.start()
+                    },
+                    onProgress = { _, _, _ -> },
+                )
+                BridgeLog.i(SCOPE, "FILETEST $outcome name=${file.name} md5=$md5")
+                file.delete()
+            }.start()
+
+            "filecut" -> Thread {
+                val key = Pairing.deriveKey("0".repeat(Pairing.CODE_LENGTH))
+                val offer = Envelope(
+                    action = Action.FILE_OFFER,
+                    key = "cut",
+                    title = "test-notivisor-cut.bin",
+                    size = 1_000_000,
+                )
+                val broken = object : InputStream() {
+                    var left = 200_000
+                    override fun read(): Int = if (left-- > 0) 1 else throw IOException("cut")
+                }
+                ServerSocket(TransportConfig.FILE_STREAM_PORT).use { server ->
+                    Thread { FileReceiver.receive(context, "127.0.0.1", key, offer) }.start()
+                    server.accept().use { socket ->
+                        socket.getInputStream().read()
+                        runCatching { FileStream(key, "cut").send(broken, socket.getOutputStream()) }
+                    }
+                }
+                BridgeLog.i(SCOPE, "FILECUT stream closed before its last frame")
+            }.start()
 
             "chattest" -> {
                 val now = System.currentTimeMillis()

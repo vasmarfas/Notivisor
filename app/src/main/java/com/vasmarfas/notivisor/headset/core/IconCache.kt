@@ -2,9 +2,9 @@ package com.vasmarfas.notivisor.headset.core
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.graphics.drawable.Icon
 import android.util.Base64
+import com.vasmarfas.notivisor.core.util.Bitmaps
 import com.vasmarfas.notivisor.core.util.BridgeLog
 import java.io.File
 
@@ -22,7 +22,7 @@ class IconCache(context: Context) {
             BridgeLog.w(SCOPE, "icon for $pkg did not decode")
             return false
         }
-        val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+        val bitmap = Bitmaps.decode(bytes)
         if (bitmap == null) {
             BridgeLog.w(SCOPE, "icon for $pkg is not an image")
             return false
@@ -40,7 +40,7 @@ class IconCache(context: Context) {
         synchronized(memory) { memory[pkg] }?.let { return Icon.createWithBitmap(it) }
         val file = fileFor(pkg)
         if (!file.exists()) return null
-        val bitmap = runCatching { BitmapFactory.decodeFile(file.path) }.getOrNull() ?: return null
+        val bitmap = runCatching { Bitmaps.decode(file.readBytes()) }.getOrNull() ?: return null
         synchronized(memory) { memory[pkg] = bitmap }
         return Icon.createWithBitmap(bitmap)
     }

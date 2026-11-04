@@ -10,6 +10,7 @@ import com.vasmarfas.notivisor.core.link.LinkManager
 import com.vasmarfas.notivisor.core.protocol.Action
 import com.vasmarfas.notivisor.core.protocol.Envelope
 import com.vasmarfas.notivisor.core.settings.BridgeSettings
+import com.vasmarfas.notivisor.core.transfer.FileReceiver
 import com.vasmarfas.notivisor.core.transport.LinkRole
 import com.vasmarfas.notivisor.core.util.BridgeLog
 import com.vasmarfas.notivisor.core.util.Clipboard
@@ -138,6 +139,8 @@ object HeadsetBridge {
                 link.sendDirect(Envelope(action = Action.PROXIMITY, prox = off))
             }.apply { isDaemon = true }.start()
 
+            Action.FILE_OFFER -> FileReceiver.accept(appContext, link, settings, envelope)
+
             Action.CAST_STOP -> {
                 HeadsetCastService.stop(appContext)
                 BridgeLog.i(SCOPE, "the phone closed the viewer")
@@ -163,6 +166,7 @@ object HeadsetBridge {
             )
         )
     }
+
 
     private fun open(url: String) {
         val target = url.trim()

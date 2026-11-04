@@ -108,10 +108,15 @@
             android:theme="@android:style/Theme.NoDisplay">
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
                 <category android:name="android.intent.category.DEFAULT" />
-                <data android:mimeType="text/plain" />
+                <data android:mimeType="*/*" />
             </intent-filter>
         </activity>
+
+        <service
+            android:name=".core.transfer.FileSendService"
+            android:exported="false" />
 
         <service
             android:name=".phone.service.BridgeService"

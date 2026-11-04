@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -62,7 +63,16 @@ fun QrScannerScreen(onResult: (String) -> Unit, onCancel: () -> Unit) {
     var error by remember { mutableStateOf<String?>(null) }
 
     val executor = remember { Executors.newSingleThreadExecutor() }
-    DisposableEffect(Unit) { onDispose { executor.shutdown() } }
+    DisposableEffect(Unit) {
+        onDispose {
+            val future = ProcessCameraProvider.getInstance(context)
+            future.addListener(
+                { runCatching { future.get().unbindAll() } },
+                ContextCompat.getMainExecutor(context),
+            )
+            executor.shutdown()
+        }
+    }
 
     var hasHeadsetPermission by remember {
         mutableStateOf(HeadsetCamera.hasPassthroughPermission(context))
@@ -104,6 +114,7 @@ fun QrScannerScreen(onResult: (String) -> Unit, onCancel: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .safeDrawingPadding()
             .padding(28.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,

@@ -95,6 +95,7 @@ import com.vasmarfas.notivisor.core.ui.HealthTone
 import com.vasmarfas.notivisor.core.ui.LogPanel
 import com.vasmarfas.notivisor.core.ui.SectionCard
 import com.vasmarfas.notivisor.core.ui.SegmentedChoice
+import com.vasmarfas.notivisor.core.ui.SendFilesButton
 import com.vasmarfas.notivisor.core.ui.SettingRow
 import com.vasmarfas.notivisor.core.ui.StatRow
 import com.vasmarfas.notivisor.core.ui.StatusBanner
@@ -344,6 +345,10 @@ fun BridgeScreen() {
                             enabled = linkState.isConnected,
                             modifier = Modifier.fillMaxWidth(),
                         ) { Text(stringResource(R.string.action_send_text)) }
+                        SendFilesButton(
+                            enabled = linkState.isConnected,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
                         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             OutlinedButton(
                                 onClick = { PhoneBridge.changeHeadsetVolume(-1) },

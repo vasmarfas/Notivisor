@@ -5,6 +5,7 @@ import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import android.os.Process
+import com.vasmarfas.notivisor.core.link.LinkManager
 import com.vasmarfas.notivisor.core.settings.BridgeSettings
 import com.vasmarfas.notivisor.core.settings.DeviceRole
 import com.vasmarfas.notivisor.core.settings.RoleDetector
@@ -18,6 +19,18 @@ object AppRole {
 
     fun current(context: Context): DeviceRole =
         RoleDetector.resolve(context, BridgeSettings.get(context))
+
+    fun link(context: Context): LinkManager = when (current(context)) {
+        DeviceRole.PHONE -> {
+            PhoneBridge.init(context)
+            PhoneBridge.link
+        }
+
+        DeviceRole.HEADSET -> {
+            HeadsetBridge.init(context)
+            HeadsetBridge.link
+        }
+    }
 
     fun start(context: Context) {
         when (current(context)) {

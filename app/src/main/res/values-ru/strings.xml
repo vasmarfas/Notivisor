@@ -113,9 +113,29 @@
     <string name="action_find_headset">Найти шлем</string>
     <string name="action_send_text">Набрать текст</string>
 
-    <string name="share_target">Открыть в шлеме</string>
-    <string name="share_sent">Отправлено в шлем</string>
-    <string name="share_no_link">В отправленном нет ссылки</string>
+    <string name="share_target">Отправить через Notivisor</string>
+    <string name="share_sent">Отправлено на другое устройство</string>
+    <string name="share_empty">Нечего отправлять</string>
+    <string name="share_sending">Отправляем на другое устройство</string>
+    <string name="share_needs_wifi">Файлы идут по Wi-Fi. Сначала переключите соединение на Wi-Fi</string>
+    <string name="share_needs_pairing">Для отправки файлов сопрягите устройства по коду</string>
+    <string name="share_needs_link">Другое устройство не подключено</string>
+
+    <string name="action_send_files">Отправить файлы</string>
+    <string name="file_picker_missing">На этом устройстве нет выбора файлов. Отправьте через «Поделиться» в другом приложении</string>
+    <string name="channel_files">Отправка файлов</string>
+    <string name="channel_files_received">Полученные файлы</string>
+    <string name="file_sending">Отправка файлов</string>
+    <string name="file_sent_count">Отправлено: %1$d из %2$d</string>
+    <string name="file_not_picked_up">Другое устройство не приняло файл. Обновите на нём Notivisor и проверьте сеть Wi-Fi</string>
+    <string name="file_no_space">На другом устройстве не хватает места</string>
+    <string name="file_unsupported">На другом устройстве слишком старый Android, файлы сохранить нельзя</string>
+    <string name="file_interrupted">Передача прервалась</string>
+    <string name="file_saved">Сохранено в «Загрузки»</string>
+    <string name="file_not_saved">Файл не дошёл</string>
+
+    <string name="channel_links">Ссылки со шлема</string>
+    <string name="link_prompt_title">Ссылка со шлема</string>
 
     <string name="label_actions">Кнопки уведомлений</string>
     <string name="label_actions_hint">Отвечать и нажимать кнопки уведомлений прямо из шлема.</string>

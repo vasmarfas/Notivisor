@@ -9,7 +9,6 @@ import android.app.RemoteInput
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.graphics.drawable.Icon
 import android.os.Build
 import android.util.Base64
@@ -21,6 +20,7 @@ import com.vasmarfas.notivisor.core.protocol.Envelope
 import com.vasmarfas.notivisor.core.protocol.RemoteAction
 import com.vasmarfas.notivisor.core.settings.BridgeSettings
 import com.vasmarfas.notivisor.core.settings.OverlayMode
+import com.vasmarfas.notivisor.core.util.Bitmaps
 import com.vasmarfas.notivisor.core.util.BridgeLog
 import com.vasmarfas.notivisor.core.util.vrTagged
 import com.vasmarfas.notivisor.headset.service.RelayReceiver
@@ -234,10 +234,8 @@ class NotificationPublisher(context: Context, private val settings: BridgeSettin
 
     private fun decodeIcon(base64: String): Icon? = decodeBitmap(base64)?.let(Icon::createWithBitmap)
 
-    private fun decodeBitmap(base64: String): Bitmap? = runCatching {
-        val bytes = Base64.decode(base64, Base64.NO_WRAP)
-        BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-    }.getOrNull()
+    private fun decodeBitmap(base64: String): Bitmap? =
+        runCatching { Bitmaps.decode(Base64.decode(base64, Base64.NO_WRAP)) }.getOrNull()
 
     private fun requestIconIfMissing(pkg: String) {
         if (pkg == "unknown" || icons.has(pkg)) return
