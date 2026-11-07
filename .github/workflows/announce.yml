@@ -14,11 +14,20 @@ jobs:
         env:
           TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
           TAG: ${{ github.event.release.tag_name }}
-          NOTES: ${{ github.event.release.body }}
+          BODY: ${{ github.event.release.body }}
         run: |
           set -eu
+          printf '%s\n' "$BODY" > notes.md
           {
-            printf '## Notivisor %s\n\n%b\n\n' "$TAG" "$NOTES"
+            printf '## Notivisor %s\n\n' "$TAG"
+            if [ "$(wc -m < notes.md)" -gt 500 ]; then
+              printf '<details><summary>Что нового / What is new</summary>\n\n'
+              cat notes.md
+              printf '\n</details>\n\n'
+            else
+              cat notes.md
+              printf '\n'
+            fi
             printf '[Скачать / Download](https://github.com/%s/releases/tag/%s)\n' "$GITHUB_REPOSITORY" "$TAG"
           } > message.md
           jq -n --rawfile markdown message.md '{chat_id: "@vasmarfas_chat", message_thread_id: 17, rich_message: {markdown: $markdown}}' \
