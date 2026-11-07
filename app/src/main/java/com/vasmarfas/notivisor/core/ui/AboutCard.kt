@@ -26,6 +26,7 @@ private const val REPO_URL = "https://github.com/vasmarfas/Notivisor"
 private const val ISSUES_URL = "$REPO_URL/issues"
 private const val SUPPORT_URL = "$REPO_URL/blob/master/SUPPORT.md"
 private const val PRIVACY_URL = "$REPO_URL/blob/master/privacy-policy.md"
+private const val CHAT_URL = "https://t.me/vasmarfas_chat"
 
 @Composable
 fun AboutCard() {
@@ -48,6 +49,10 @@ fun AboutCard() {
             title = stringResource(R.string.about_issues),
             detail = stringResource(R.string.about_issues_hint),
         ) { open(context, ISSUES_URL) }
+        LinkRow(
+            title = stringResource(R.string.about_chat),
+            detail = stringResource(R.string.about_chat_hint),
+        ) { open(context, CHAT_URL) }
         LinkRow(
             title = stringResource(R.string.about_support),
             detail = stringResource(R.string.about_support_hint),

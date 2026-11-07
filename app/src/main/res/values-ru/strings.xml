@@ -244,6 +244,8 @@
     <string name="about_github_hint">README, инструкция по сборке и история версий</string>
     <string name="about_issues">Сообщить о проблеме</string>
     <string name="about_issues_hint">Полезнее всего — журнал из карточки «Статистика»</string>
+    <string name="about_chat">Чат в Telegram</string>
+    <string name="about_chat_hint">Новости и обсуждение проектов</string>
     <string name="about_support">Поддержать проект</string>
     <string name="about_support_hint">Notivisor бесплатен, без рекламы и без аккаунтов</string>
     <string name="about_privacy">Политика конфиденциальности</string>

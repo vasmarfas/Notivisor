@@ -4,7 +4,7 @@
 ставится на оба устройства и связывает их напрямую по Bluetooth или Wi-Fi. Без аккаунта, без
 сервера, ничего не покидает эти два устройства.
 
-[English version](README.md)
+[English version](README.md) · [Чат в Telegram](https://t.me/vasmarfas_chat)
 
 **❤️ Поддержать проект:** [`SUPPORT.md`](SUPPORT.md). **🔒 Приватность:** [
 `privacy-policy.md`](privacy-policy.md). **📜 Условия:** [`terms.md`](terms.md).

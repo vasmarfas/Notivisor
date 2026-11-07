@@ -246,6 +246,8 @@
     <string name="about_github_hint">README, build instructions and release notes</string>
     <string name="about_issues">Report a problem</string>
     <string name="about_issues_hint">The log from the Statistics card is the useful part</string>
+    <string name="about_chat">Telegram chat</string>
+    <string name="about_chat_hint">News and talk about the projects</string>
     <string name="about_support">Support the project</string>
     <string name="about_support_hint">Notivisor is free, with no ads and no accounts</string>
     <string name="about_privacy">Privacy policy</string>

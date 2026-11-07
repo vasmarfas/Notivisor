@@ -4,7 +4,7 @@ Your phone's notifications, shown inside your VR headset — including while you
 game. One app, installed on both devices, talking directly over Bluetooth or Wi-Fi. No account, no
 server, nothing leaves the two devices.
 
-[Русская версия](README.ru.md)
+[Русская версия](README.ru.md) · [Telegram chat](https://t.me/vasmarfas_chat)
 
 **❤️ Support the project:** see [`SUPPORT.md`](SUPPORT.md). **🔒 Privacy:** [
 `privacy-policy.md`](privacy-policy.md). **📜 Terms:** [`terms.md`](terms.md).
