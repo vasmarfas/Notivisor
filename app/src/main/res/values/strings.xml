@@ -254,6 +254,11 @@
     <string name="about_support_hint">Notivisor is free, with no ads and no accounts</string>
     <string name="about_privacy">Privacy policy</string>
     <string name="about_privacy_hint">Short version: nothing leaves your two devices</string>
+    <string name="about_licenses">Open source licenses</string>
+    <string name="about_licenses_hint">scrcpy, ZXing, AndroidX and others, with the full license texts</string>
+    <string name="licenses_intro">Notivisor itself is distributed under PolyForm Noncommercial 1.0.0. Below are the third-party components inside the app and the licenses they are used under. Tap a line to read the license text.</string>
+    <string name="license_dual_note">Apache 2.0 chosen from a dual license with GPL-3.0</string>
+    <string name="license_lgpl_note">Used unmodified. The Notivisor source is public, so the app can be rebuilt with a modified version of the library</string>
 
     <plurals name="apps_count">
         <item quantity="one">%1$d application</item>

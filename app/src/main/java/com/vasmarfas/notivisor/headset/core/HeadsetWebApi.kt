@@ -58,7 +58,7 @@ class HeadsetWebApi(private val context: Context, private val hub: CastHub) : We
                 return WebResponse.EMPTY
             }
         }
-        if (!controlled) return WebResponse.error("403 Forbidden", "control_off")
+        if (!controlled) return WebResponse.error(403, "control_off")
         return when (route) {
             "POST cast" -> configure(JSONObject(request.text()))
             "POST adb/check" -> {
@@ -77,7 +77,7 @@ class HeadsetWebApi(private val context: Context, private val hub: CastHub) : We
 
             "POST apps/uninstall" -> {
                 val name = packageOf(request) ?: return BAD_PACKAGE
-                if (name == context.packageName) return WebResponse.error("400 Bad Request", "self")
+                if (name == context.packageName) return WebResponse.error(400, "self")
                 shell { it.report("pm uninstall $name", expect = "Success") }
             }
 
@@ -191,7 +191,7 @@ class HeadsetWebApi(private val context: Context, private val hub: CastHub) : We
 
     private fun cast(chosen: CastSource? = null): JSONObject {
         val status = HeadsetCastService.status.value
-        val config = settings.castConfig
+        val config = settings.castOptions
         val source = chosen ?: status.source ?: settings.castSource
         return JSONObject()
             .put("source", source.name)
@@ -214,7 +214,7 @@ class HeadsetWebApi(private val context: Context, private val hub: CastHub) : We
     }
 
     private fun configure(body: JSONObject): WebResponse {
-        var config = settings.castConfig
+        var config = settings.castOptions
         CastQuality.entries.firstOrNull { it.name == body.optString("quality") }
             ?.let { config = config.copy(quality = it) }
         if (body.has("fps")) config = config.copy(fps = if (body.optInt("fps") >= 60) 60 else 30)
@@ -222,7 +222,7 @@ class HeadsetWebApi(private val context: Context, private val hub: CastHub) : We
         if (body.has("rightEye")) config = config.copy(rightEye = body.optBoolean("rightEye"))
         if (body.has("sound")) config = config.copy(sound = body.optBoolean("sound"))
         if (body.has("stabilized")) config = config.copy(stabilized = body.optBoolean("stabilized"))
-        if (config != settings.castConfig) settings.castConfig = config
+        if (config != settings.castOptions) settings.castOptions = config
 
         val source = WEB_SOURCES.firstOrNull { it.name == body.optString("source") }
         if (source != null) settings.castSource = source
@@ -257,14 +257,14 @@ class HeadsetWebApi(private val context: Context, private val hub: CastHub) : We
             bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)
             bitmap.recycle()
             stream.toByteArray()
-        }.getOrNull()?.also { icons[name] = it } ?: return WebResponse.error("404 Not Found", "not_found")
-        return WebResponse.bytes(png, "image/png", headers = "Cache-Control: max-age=86400\r\n")
+        }.getOrNull()?.also { icons[name] = it } ?: return WebResponse.error(404, "not_found")
+        return WebResponse.bytes(png, "image/png", headers = mapOf("Cache-Control" to "max-age=86400"))
     }
 
     private fun apk(name: String): WebResponse {
         val file = runCatching { File(context.packageManager.getApplicationInfo(name, 0).sourceDir) }.getOrNull()
             ?.takeIf { it.canRead() }
-            ?: return WebResponse.error("404 Not Found", "not_found")
+            ?: return WebResponse.error(404, "not_found")
         return WebResponse(type = APK, length = file.length(), headers = attachment("$name.apk")) { out ->
             file.inputStream().use { it.copyTo(out) }
         }
@@ -273,16 +273,16 @@ class HeadsetWebApi(private val context: Context, private val hub: CastHub) : We
     private fun launch(name: String): WebResponse {
         if (adb == AdbAccess.READY) return shell { it.report("monkey -p $name -c android.intent.category.LAUNCHER 1") }
         val intent = context.packageManager.getLaunchIntentForPackage(name)
-            ?: return WebResponse.error("404 Not Found", "not_found")
+            ?: return WebResponse.error(404, "not_found")
         return runCatching { context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
-            .fold({ WebResponse.EMPTY }, { WebResponse.error("500 Internal Server Error", it.message.orEmpty()) })
+            .fold({ WebResponse.EMPTY }, { WebResponse.error(500, it.message.orEmpty()) })
     }
 
     private fun install(request: WebRequest): WebResponse {
         if (request.length <= 0) return BAD_REQUEST
         return shell(INSTALL_TIMEOUT_MS) { connection ->
             when (val result = connection.install(request.body.source(), request.length, "-r")) {
-                is InstallResult.Failure -> WebResponse.error("422 Unprocessable Entity", result.reason.trim())
+                is InstallResult.Failure -> WebResponse.error(422, result.reason.trim())
                 else -> {
                     BridgeLog.i(SCOPE, "installed a package of ${request.length} bytes")
                     WebResponse.json("{\"ok\":true}")
@@ -297,7 +297,7 @@ class HeadsetWebApi(private val context: Context, private val hub: CastHub) : We
             val response = connection.shell(
                 "cd -- ${quote(path)} || exit $NO_FOLDER; stat -L -c '%F|%s|%Y|%n' -- * .[!.]* 2>/dev/null; true"
             )
-            if (response.exitCode == NO_FOLDER) return@shell WebResponse.error("404 Not Found", response.errorOutput.trim())
+            if (response.exitCode == NO_FOLDER) return@shell WebResponse.error(404, response.errorOutput.trim())
             val entries = response.output.lineSequence().mapNotNull { line ->
                 val parts = line.split('|', limit = 4)
                 if (parts.size < 4) return@mapNotNull null
@@ -316,7 +316,7 @@ class HeadsetWebApi(private val context: Context, private val hub: CastHub) : We
         val path = pathOf(raw) ?: return BAD_PATH
         return shell(TRANSFER_TIMEOUT_MS) { connection ->
             val size = connection.shell("stat -L -c %s -- ${quote(path)}").output.trim().toLongOrNull()
-                ?: return@shell WebResponse.error("404 Not Found", "not_found")
+                ?: return@shell WebResponse.error(404, "not_found")
             WebResponse(
                 type = BINARY,
                 length = size,
@@ -330,7 +330,7 @@ class HeadsetWebApi(private val context: Context, private val hub: CastHub) : We
         val path = pathOf(request.query["path"].orEmpty()) ?: return BAD_PATH
         return shell(TRANSFER_TIMEOUT_MS) { connection ->
             when (val result = connection.push(request.body.source(), path, FILE_MODE, System.currentTimeMillis())) {
-                is SyncResult.Failure -> WebResponse.error("500 Internal Server Error", result.reason)
+                is SyncResult.Failure -> WebResponse.error(500, result.reason)
                 else -> WebResponse.EMPTY
             }
         }
@@ -351,7 +351,7 @@ class HeadsetWebApi(private val context: Context, private val hub: CastHub) : We
         if (adb == AdbAccess.READY) return shell { it.report("am start -a android.intent.action.VIEW -d ${quote(url)}") }
         val view = Intent(Intent.ACTION_VIEW, url.toUri()).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         return runCatching { context.startActivity(view) }
-            .fold({ WebResponse.EMPTY }, { WebResponse.error("500 Internal Server Error", it.message.orEmpty()) })
+            .fold({ WebResponse.EMPTY }, { WebResponse.error(500, it.message.orEmpty()) })
     }
 
     private fun shell(timeoutMs: Int = SHELL_TIMEOUT_MS, block: (Dadb) -> WebResponse): WebResponse {
@@ -363,20 +363,20 @@ class HeadsetWebApi(private val context: Context, private val hub: CastHub) : We
             runCatching { connection.close() }
             BridgeLog.w(SCOPE, "adb request failed: ${e.message}")
             checkAdb()
-            WebResponse.error("500 Internal Server Error", e.message ?: "adb")
+            WebResponse.error(500, e.message ?: "adb")
         }
     }
 
     private fun Dadb.report(command: String, expect: String? = null): WebResponse {
         val response = shell(command)
         val failed = response.exitCode != 0 || (expect != null && expect !in response.allOutput)
-        return if (failed) WebResponse.error("500 Internal Server Error", response.allOutput.trim()) else WebResponse.EMPTY
+        return if (failed) WebResponse.error(500, response.allOutput.trim()) else WebResponse.EMPTY
     }
 
     private fun adbMissing(): WebResponse {
         val unauthorized = adb == AdbAccess.UNAUTHORIZED
         if (!unauthorized) checkAdb()
-        return WebResponse.error("409 Conflict", if (unauthorized) "adb_unauthorized" else "adb_offline")
+        return WebResponse.error(409, if (unauthorized) "adb_unauthorized" else "adb_offline")
     }
 
     private fun checkAdb() {
@@ -392,10 +392,10 @@ class HeadsetWebApi(private val context: Context, private val hub: CastHub) : We
 
     private fun quote(value: String): String = "'" + value.replace("'", "'\\''") + "'"
 
-    private fun attachment(name: String): String {
+    private fun attachment(name: String): Map<String, String> {
         val plain = name.map { if (it.code in 32..126 && it != '"' && it != '\\') it else '_' }.joinToString("")
         val encoded = URLEncoder.encode(name, Charsets.UTF_8.name()).replace("+", "%20")
-        return "Content-Disposition: attachment; filename=\"$plain\"; filename*=UTF-8''$encoded\r\n"
+        return mapOf("Content-Disposition" to "attachment; filename=\"$plain\"; filename*=UTF-8''$encoded")
     }
 
     private companion object {
@@ -426,8 +426,8 @@ class HeadsetWebApi(private val context: Context, private val hub: CastHub) : We
             "MEDIA_PLAY_PAUSE" to 85,
         )
 
-        val BAD_REQUEST = WebResponse.error("400 Bad Request", "bad_request")
-        val BAD_PACKAGE = WebResponse.error("400 Bad Request", "bad_package")
-        val BAD_PATH = WebResponse.error("400 Bad Request", "bad_path")
+        val BAD_REQUEST = WebResponse.error(400, "bad_request")
+        val BAD_PACKAGE = WebResponse.error(400, "bad_package")
+        val BAD_PATH = WebResponse.error(400, "bad_path")
     }
 }

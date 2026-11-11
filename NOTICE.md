@@ -45,15 +45,23 @@ Copyright (C) Romain Vimont and the scrcpy contributors, licensed under the
 <https://github.com/Genymobile/scrcpy>. Because that file is redistributed as a binary, this
 attribution travels with every build.
 
-The app also links, unmodified and via Gradle, against AndroidX and Jetpack Compose, ZXing,
-Shizuku, dadb and Conscrypt, all under the Apache License 2.0, plus two libraries whose terms are
-worth stating exactly:
+The app also links, unmodified and via Gradle, against AndroidX and Jetpack Compose, Kotlin and
+kotlinx.coroutines, ZXing, dadb, Okio, Conscrypt, Guava, Dagger and a few annotation libraries,
+all under the Apache License 2.0; against the Shizuku API, Bouncy Castle and the Checker Framework
+qualifiers under the MIT License; and against three libraries whose terms are worth stating
+exactly:
 
 - **libadb-android** — dual licensed GPL-3.0-or-later *or* Apache-2.0; used here under
-  **Apache-2.0**. Its upstream notes that it carries an LGPL dependency of its own.
+  **Apache-2.0**.
+- **spake2-java** (pulled in by libadb-android) — LGPL-3.0, used unmodified. Its source is at
+  <https://github.com/MuntashirAkon/spake2-java>, and since the source of this app is public too,
+  the app can be rebuilt against a modified version of the library.
 - **sun-security-android** — GPL-2.0 **with the Classpath Exception**, the same exception the
   OpenJDK sources it repackages carry. That exception is what permits linking it into this app
-  without the GPL extending to the rest of the work.
+  without the GPL extending to the rest of the work. Its source is at
+  <https://github.com/MuntashirAkon/sun-security-android>.
+
+The full texts of all these licenses ship inside the app, under About → Open source licenses.
 
 ## Name, icon and package ID
 

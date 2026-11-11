@@ -76,6 +76,7 @@
     <string name="cast_settings_next_start">В режиме записи новые настройки применятся после остановки трансляции</string>
     <string name="cast_settings_live">Настройки применяются сразу, картинка вернётся через пару секунд</string>
     <string name="cast_error_no_service">Служба кастинга Quest не ответила</string>
+    <string name="cast_error_no_service_direct">Служба кастинга Quest не приняла подключение без adb, так бывает на части прошивок. Выберите режим «Quest + adb»</string>
     <string name="cast_error_no_scrcpy">scrcpy не запустился на шлеме</string>
     <string name="cast_error_no_projection">Запись экрана не разрешена</string>
     <string name="cast_error_stalled">Шлем перестал присылать картинку</string>
@@ -98,7 +99,7 @@
     <string name="action_check_adb">Проверить</string>
 
     <string name="section_cast_web">Шлем в браузере</string>
-    <string name="section_cast_web_hint">Адрес открывается в браузере любого телефона, ПК или телевизора в той же сети Wi-Fi, приложение не нужно</string>
+    <string name="section_cast_web_hint">Шлем отдаёт страницу по своему адресу в домашней сети: картинку смотрят в обычном браузере, ставить ничего не нужно</string>
     <string name="cast_web_viewers">Сейчас смотрят: %1$d</string>
     <string name="cast_web_qr">QR-код с адресом страницы</string>
     <string name="cast_no_address">У шлема нет адреса в Wi-Fi</string>
@@ -111,5 +112,5 @@
     <string name="setting_web_autostart">Включать вместе с приложением</string>
     <string name="setting_web_autostart_hint">Страница доступна всегда. Захват начинается, когда её кто-то открыл, и гаснет, когда все ушли</string>
     <string name="cast_web_port">Порт</string>
-    <string name="cast_web_port_busy">порт %1$d занят другим приложением</string>
+    <string name="cast_port_taken">порт %1$d уже слушает другая программа, укажите другой</string>
 </resources>

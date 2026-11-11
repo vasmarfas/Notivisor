@@ -11,7 +11,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -31,6 +34,7 @@ private const val CHAT_URL = "https://t.me/vasmarfas_chat"
 @Composable
 fun AboutCard() {
     val context = LocalContext.current
+    var licenses by remember { mutableStateOf(false) }
     val version = remember {
         runCatching {
             context.packageManager.getPackageInfo(context.packageName, 0).versionName
@@ -61,11 +65,18 @@ fun AboutCard() {
             title = stringResource(R.string.about_privacy),
             detail = stringResource(R.string.about_privacy_hint),
         ) { open(context, PRIVACY_URL) }
+        LinkRow(
+            title = stringResource(R.string.about_licenses),
+            detail = stringResource(R.string.about_licenses_hint),
+            external = false,
+        ) { licenses = true }
     }
+
+    if (licenses) OpenSourceLicenses { licenses = false }
 }
 
 @Composable
-private fun LinkRow(title: String, detail: String, onClick: () -> Unit) {
+private fun LinkRow(title: String, detail: String, external: Boolean = true, onClick: () -> Unit) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(14.dp),
@@ -85,7 +96,7 @@ private fun LinkRow(title: String, detail: String, onClick: () -> Unit) {
                 )
             }
             Text(
-                "↗",
+                if (external) "↗" else "›",
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(start = 12.dp),

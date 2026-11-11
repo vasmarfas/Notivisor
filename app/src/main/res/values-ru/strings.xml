@@ -252,6 +252,11 @@
     <string name="about_support_hint">Notivisor бесплатен, без рекламы и без аккаунтов</string>
     <string name="about_privacy">Политика конфиденциальности</string>
     <string name="about_privacy_hint">Коротко: данные не покидают ваши два устройства</string>
+    <string name="about_licenses">Лицензии открытых компонентов</string>
+    <string name="about_licenses_hint">scrcpy, ZXing, AndroidX и другие, с полными текстами лицензий</string>
+    <string name="licenses_intro">Сам Notivisor распространяется под PolyForm Noncommercial 1.0.0. Ниже — чужие компоненты внутри приложения и лицензии, по которым они используются. Нажмите на строку, чтобы прочитать текст лицензии.</string>
+    <string name="license_dual_note">Выбран вариант Apache 2.0 из двойной лицензии с GPL-3.0</string>
+    <string name="license_lgpl_note">Используется без изменений. Исходники Notivisor открыты, так что приложение можно пересобрать с изменённой версией библиотеки</string>
 
     <plurals name="apps_count">
         <item quantity="one">%1$d приложение</item>

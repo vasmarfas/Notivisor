@@ -39,6 +39,9 @@ class AdbConnection private constructor(private val material: AdbIdentity.Materi
 
         private var instances: List<AdbConnection>? = null
 
+        @Volatile
+        private var grantRefused = false
+
         @Synchronized
         private fun managers(context: Context): List<AdbConnection> =
             instances ?: AdbIdentity.identities(context.applicationContext)
@@ -98,9 +101,15 @@ class AdbConnection private constructor(private val material: AdbIdentity.Materi
             Dadb.create(LOOPBACK, TCPIP_PORT, AdbIdentity.keyPair(context), PROBE_TIMEOUT_MS, timeoutMs)
 
         fun keep(context: Context, shell: Dadb) {
-            if (canEnableWireless(context)) return
-            runCatching { shell.shell("pm grant ${context.packageName} ${Manifest.permission.WRITE_SECURE_SETTINGS}") }
-                .onSuccess { BridgeLog.i(SCOPE, "wireless debugging can now be switched on without a computer") }
+            if (grantRefused || canEnableWireless(context)) return
+            val result = runCatching {
+                shell.shell("pm grant ${context.packageName} ${Manifest.permission.WRITE_SECURE_SETTINGS}")
+            }.getOrNull() ?: return
+            if (result.exitCode == 0) {
+                BridgeLog.i(SCOPE, "wireless debugging can now be switched on without a computer")
+            } else {
+                grantRefused = true
+            }
         }
 
         fun canEnableWireless(context: Context): Boolean =

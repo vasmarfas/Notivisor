@@ -76,6 +76,7 @@
     <string name="cast_settings_next_start">In capture mode new settings apply after casting stops</string>
     <string name="cast_settings_live">Settings apply at once, the picture is back in a couple of seconds</string>
     <string name="cast_error_no_service">The Quest casting service did not answer</string>
+    <string name="cast_error_no_service_direct">The Quest casting service refused a connection without adb, which some firmware does. Switch to the \"Quest + adb\" mode</string>
     <string name="cast_error_no_scrcpy">scrcpy did not start on the headset</string>
     <string name="cast_error_no_projection">Screen capture was not allowed</string>
     <string name="cast_error_stalled">The headset stopped sending the picture</string>
@@ -98,7 +99,7 @@
     <string name="action_check_adb">Check</string>
 
     <string name="section_cast_web">The headset in a browser</string>
-    <string name="section_cast_web_hint">Any phone, PC or TV on the same Wi-Fi opens the address in a browser, no app needed</string>
+    <string name="section_cast_web_hint">The headset serves a page at its own address on your home network: watch in an ordinary browser, nothing to install</string>
     <string name="cast_web_viewers">Watching now: %1$d</string>
     <string name="cast_web_qr">QR code with the page address</string>
     <string name="cast_no_address">The headset has no Wi-Fi address</string>
@@ -111,5 +112,5 @@
     <string name="setting_web_autostart">Turn on together with the app</string>
     <string name="setting_web_autostart_hint">The page is always there. Capture starts when someone opens it and stops when everyone has left</string>
     <string name="cast_web_port">Port</string>
-    <string name="cast_web_port_busy">port %1$d is taken by another app</string>
+    <string name="cast_port_taken">another program is already listening on port %1$d, pick a different one</string>
 </resources>

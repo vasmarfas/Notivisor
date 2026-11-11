@@ -81,8 +81,8 @@
   .seg button { flex: 1; min-width: 0; height: 36px; padding: 0 6px; border: 0; border-left: 1px solid var(--out); background: none;
     color: var(--on); font-size: 13px; font-weight: 500; white-space: nowrap; cursor: pointer; }
   .seg button:first-child { border-left: 0; }
-  .seg button.on { background: var(--secc); color: var(--onsecc); }
-  .seg button:hover:not(.on) { background: rgba(228, 225, 233, .08); }
+  .seg button[aria-pressed="true"] { background: var(--secc); color: var(--onsecc); }
+  .seg button:hover:not([aria-pressed="true"]) { background: rgba(228, 225, 233, .08); }
   .switch { position: relative; flex: none; width: 52px; height: 32px; padding: 0; border: 2px solid var(--out); border-radius: 16px;
     background: var(--sch); cursor: pointer; }
   .switch span { position: absolute; top: 50%; left: 6px; width: 16px; height: 16px; margin-top: -8px; border-radius: 50%;
@@ -173,10 +173,10 @@
   #cast.idle { cursor: none; }
   #video { position: absolute; inset: 0; width: 100%; height: 100%; background: #000; object-fit: contain; }
   #bar { position: absolute; right: 0; bottom: 0; left: 0; display: flex; align-items: center; gap: 2px; padding: 28px 12px 10px;
-    background: linear-gradient(transparent, rgba(0, 0, 0, .75)); transition: opacity .3s; }
+    background: linear-gradient(transparent, rgba(0, 0, 0, .75)); transition: opacity .2s; }
   #cast.idle #bar { opacity: 0; pointer-events: none; }
   #bar .ib { color: #fff; }
-  #bar .ib.on { color: var(--pri); }
+  #bar .ib[aria-pressed="true"] { color: var(--pri); }
   #bar .ib.rec { color: var(--err); }
   #status { display: flex; flex: 1; align-items: center; gap: 8px; min-width: 0; padding-left: 8px; }
   #status i { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--ter); }
@@ -217,7 +217,7 @@
 <nav id="nav"></nav>
 <main>
   <section id="cast">
-    <video id="video" muted autoplay playsinline></video>
+    <video id="video" muted autoplay playsinline disableremoteplayback></video>
     <div id="banner" role="alert" hidden></div>
     <pre id="stats" hidden></pre>
     <div id="bar"></div>
@@ -241,18 +241,18 @@ document.documentElement.lang = RU ? 'ru' : 'en';
 
 const T = RU ? {
   cast: 'Трансляция', apps: 'Приложения', files: 'Файлы', shell: 'Консоль', device: 'Устройство',
-  connecting: 'Подключение…', waiting: 'Ждём картинку…', live: 'В эфире', lost: 'Связь пропала, переподключаемся…',
+  connecting: 'Подключение…', waiting: 'Ждём картинку…', live: 'В эфире', lost: 'Связь пропала, подключаемся снова…',
   busy: 'Уже смотрят четыре зрителя, ждём свободного места…', codec: 'Браузер не умеет воспроизводить этот поток',
   paused: 'Просмотр приостановлен', auth: 'Пароль изменился, обновите страницу', applying: 'Применяем…',
   starting: 'Шлем запускает захват…', trouble: 'Шлем не отдаёт картинку и пробует снова',
   soundOn: 'Включить звук (M)', soundOff: 'Выключить звук (M)', snapshot: 'Сохранить кадр', record: 'Записать видео',
-  stopRecord: 'Остановить запись', pip: 'Картинка в картинке', stats: 'Сведения о потоке (I)', fullscreen: 'Во весь экран (F)',
+  stopRecord: 'Остановить запись', pip: 'Картинка в картинке', stats: 'Сведения о потоке, клавиша I', fullscreen: 'Во весь экран, клавиша F',
   settings: 'Параметры трансляции', noPicture: 'Картинки пока нет', recEmpty: 'Запись пуста: ключевой кадр не пришёл',
   recLimit: 'Запись остановлена на 1,5 ГБ', fpsUnit: 'кадров/с', mbit: 'Мбит/с', bufferMs: 'буфер', ms: 'мс',
   source: 'Способ захвата', quality: 'Разрешение', eye: 'Глаз', fps: 'Кадров в секунду', bitrate: 'Битрейт, Мбит/с', auto: 'Авто',
   eyeSide: 'Какой глаз показывать', left: 'Левый', right: 'Правый', stabilized: 'Стабилизация', soundSetting: 'Звук',
   settingsNote: 'Изменения применяются сразу, картинка возвращается через пару секунд.', projection: 'Запись экрана',
-  cancel: 'Отмена', close: 'Закрыть', refresh: 'Обновить', search: 'Поиск', failed: 'Не получилось', network: 'Нет связи со шлемом',
+  cancel: 'Отмена', close: 'Закрыть', refresh: 'Обновить', search: 'Поиск', failed: 'Не получилось', network: 'Шлем не отвечает',
   retry: 'Повторить',
   controlOffTitle: 'Управление из браузера выключено',
   controlOffText: 'Включите «Управление из браузера» в Notivisor на шлеме. Для него нужен пароль.',
@@ -370,7 +370,7 @@ const QUICK_PATHS = [['/sdcard', '/sdcard'], ['Download', '/sdcard/Download'], [
   ['DCIM', '/sdcard/DCIM'], ['Movies', '/sdcard/Movies']];
 const QUICK_COMMANDS = ['getprop ro.build.version.release', 'pm list packages -3', 'dumpsys battery', 'df -h /sdcard', 'logcat -d -t 100'];
 
-const $ = id => document.getElementById(id);
+const byId = document.getElementById.bind(document);
 const NS = 'http://www.w3.org/2000/svg';
 
 function h(tag, props, ...children) {
@@ -423,7 +423,7 @@ function toggle(checked, onchange, label) {
 
 function segmented(options, selected, onselect) {
   return h('div', { class: 'seg', role: 'group' }, options.map(option => h('button', {
-    type: 'button', class: option.value === selected && 'on', 'aria-pressed': String(option.value === selected), text: option.label,
+    type: 'button', 'aria-pressed': String(option.value === selected), text: option.label,
     onclick: () => option.value !== selected && onselect(option.value),
   })));
 }
@@ -444,7 +444,7 @@ function rich(text) {
 
 let snackTimer = 0;
 function toast(text) {
-  const snack = $('snack');
+  const snack = byId('snack');
   (document.fullscreenElement || document.body).append(snack);
   snack.textContent = text;
   snack.classList.add('show');
@@ -454,7 +454,7 @@ function toast(text) {
 
 function ask({ title, text, input, body, action, danger, dismiss }) {
   return new Promise(resolve => {
-    const dialog = $('dialog');
+    const dialog = byId('dialog');
     const field = input !== undefined && h('input', { class: 'field', type: 'text', value: input, autocomplete: 'off' });
     const none = field ? null : false;
     const finish = value => {
@@ -685,11 +685,11 @@ async function poll() {
 function apply(next) {
   state = next;
   renderTop();
-  const banner = $('banner');
+  const banner = byId('banner');
   banner.hidden = !(state && state.cast.error);
   banner.textContent = state ? state.cast.error || '' : '';
   tuneButton.hidden = !(state && state.control);
-  if (!$('sheet').hidden) {
+  if (!byId('sheet').hidden) {
     if (state && state.control) renderSheet();
     else closeSheet();
   }
@@ -702,7 +702,7 @@ function apply(next) {
 }
 
 function renderTop() {
-  $('top').replaceChildren(
+  byId('top').replaceChildren(
     h('div', { class: 'name', text: state ? state.device.name : 'Notivisor' }),
     state && h('div', { class: 'stats' },
       h('span', { class: 'stat', title: T.battery }, icon(state.battery.charging ? 'bolt' : 'battery'), state.battery.level + '%'),
@@ -717,29 +717,29 @@ function blocked(root) {
 
 async function entering(name) {
   await ready;
-  return current === name && !blocked($(name));
+  return current === name && !blocked(byId(name));
 }
 
 // ---- player
 
-const TYPE_CONFIG = 1, TYPE_VIDEO = 2, TYPE_SOUND = 3, TYPE_NOTICE = 4;
+const TAG_CONFIG = 'C', TAG_VIDEO = 'V', TAG_SOUND = 'S', TAG_NOTICE = 'N';
 const RATE = 48000;
 const SCALE = 1000000;
 const KEY_EVERY = 8 * SCALE;
 const RECORD_LIMIT = 1500 * 1024 * 1024;
 const Source = window.ManagedMediaSource || window.MediaSource;
 
-const video = $('video');
-const stage = $('cast');
+const video = byId('video');
+const castView = byId('cast');
 const statusNode = h('div', { id: 'status', 'aria-live': 'polite' }, h('i'), h('span'));
 const recNode = h('span', { id: 'rec', hidden: true });
 const soundButton = iconButton('volumeOff', T.soundOn, toggleSound);
 const recButton = iconButton('record', T.record, toggleRecording);
 const statsButton = iconButton('info', T.stats, toggleStats);
-const tuneButton = iconButton('tune', T.settings, () => ($('sheet').hidden ? openSheet() : closeSheet()));
+const tuneButton = iconButton('tune', T.settings, () => (byId('sheet').hidden ? openSheet() : closeSheet()));
 
-let media = null, buffer = null, queue = [], parameters = null, init = null;
-let sequence = 1, mediaTime = 0, lastServer = null, started = false, keyAt = null, keyAsked = 0, trimTo = 0;
+let media = null, buffer = null, outbox = null, parameters = null, header = null;
+let fragments = 0, mediaTime = 0, lastServer = null, started = false, keyAt = null, keyAsked = 0, trimTo = 0;
 let lastAppend = 0, lastAdvance = 0, lastPresented = -1, stalls = 0, rescueUntil = 0;
 let link = null, session = 0, watching = false, retryTimer = 0, leaveTimer = 0;
 let status = 'connecting', notice = null, applying = 0, applyTimer = 0;
@@ -747,86 +747,135 @@ let audio = null, audioTime = 0;
 let recorder = null;
 const meter = { frames: 0, bytes: 0 };
 
-function u32(...values) {
-  const out = new Uint8Array(values.length * 4);
-  const view = new DataView(out.buffer);
-  values.forEach((value, i) => view.setUint32(i * 4, value));
-  return out;
-}
-
-function u16(...values) {
-  const out = new Uint8Array(values.length * 2);
-  const view = new DataView(out.buffer);
-  values.forEach((value, i) => view.setUint16(i * 2, value));
-  return out;
-}
-
-function ascii(text) { return Uint8Array.from(text, c => c.charCodeAt(0)); }
-
-function concat(parts) {
-  const out = new Uint8Array(parts.reduce((sum, part) => sum + part.length, 0));
-  let at = 0;
-  for (const part of parts) { out.set(part, at); at += part.length; }
-  return out;
-}
-
-function box(type, ...parts) {
-  const body = concat(parts);
-  return concat([u32(body.length + 8), ascii(type), body]);
-}
-
-function full(type, versionAndFlags, ...parts) { return box(type, u32(versionAndFlags), ...parts); }
-
-const MATRIX = u32(0x10000, 0, 0, 0, 0x10000, 0, 0, 0, 0x40000000);
-
-function initSegment(sps, pps, width, height) {
-  const avcC = box('avcC',
-    new Uint8Array([1, sps[1], sps[2], sps[3], 0xff, 0xe1]), u16(sps.length), sps,
-    new Uint8Array([1]), u16(pps.length), pps);
-  const avc1 = box('avc1',
-    new Uint8Array(6), u16(1), new Uint8Array(16), u16(width, height),
-    u32(0x480000, 0x480000, 0), u16(1), new Uint8Array(32), u16(0x18, 0xffff), avcC);
-  const stbl = box('stbl',
-    full('stsd', 0, u32(1), avc1), full('stts', 0, u32(0)), full('stsc', 0, u32(0)),
-    full('stsz', 0, u32(0, 0)), full('stco', 0, u32(0)));
-  const minf = box('minf',
-    full('vmhd', 1, u16(0, 0, 0, 0)),
-    box('dinf', full('dref', 0, u32(1), full('url ', 1))), stbl);
-  const mdia = box('mdia',
-    full('mdhd', 0, u32(0, 0, SCALE, 0), u16(0x55c4, 0)),
-    full('hdlr', 0, u32(0), ascii('vide'), u32(0, 0, 0), ascii('video\0')), minf);
-  const trak = box('trak',
-    full('tkhd', 3, u32(0, 0, 1, 0, 0, 0, 0), u16(0, 0, 0, 0), MATRIX, u32(width * 65536, height * 65536)), mdia);
-  const moov = box('moov',
-    full('mvhd', 0, u32(0, 0, SCALE, 0, 0x10000), u16(0x100, 0), u32(0, 0), MATRIX, new Uint8Array(24), u32(2)),
-    trak, box('mvex', full('trex', 0, u32(1, 1, 0, 0, 0))));
-  return concat([box('ftyp', ascii('isom'), u32(0x200), ascii('isom'), ascii('iso6'), ascii('avc1'), ascii('mp41')), moov]);
-}
-
-function mediaSegment(number, time, duration, sample, key) {
-  const trun = full('trun', 0x000701, u32(1, 0, duration, sample.length, key ? 0x02000000 : 0x01010000));
-  const moof = box('moof',
-    full('mfhd', 0, u32(number)),
-    box('traf', full('tfhd', 0x020000, u32(1)), full('tfdt', 0x01000000, u32(Math.floor(time / 4294967296), time >>> 0)), trun));
-  new DataView(moof.buffer).setUint32(moof.length - trun.length + 16, moof.length + 8);
-  return concat([moof, box('mdat', sample)]);
-}
-
-function nalUnits(data) {
-  const units = [];
-  let start = -1;
-  let i = 0;
-  while (i + 2 < data.length) {
-    if (data[i] === 0 && data[i + 1] === 0 && (data[i + 2] === 1 || (data[i + 2] === 0 && data[i + 3] === 1))) {
-      if (start >= 0) units.push(data.subarray(start, i));
-      i += data[i + 2] === 1 ? 3 : 4;
-      start = i;
-    } else {
-      i++;
-    }
+class Mp4Out {
+  constructor(capacity = 1024) {
+    this.buf = new Uint8Array(capacity);
+    this.view = new DataView(this.buf.buffer);
+    this.at = 0;
+    this.boxes = [];
   }
-  if (start >= 0) units.push(data.subarray(start));
-  return units;
+
+  reserve(count) {
+    if (this.at + count <= this.buf.length) return;
+    const grown = new Uint8Array(Math.max(this.buf.length * 2, this.at + count));
+    grown.set(this.buf.subarray(0, this.at));
+    this.buf = grown;
+    this.view = new DataView(grown.buffer);
+  }
+
+  u8(...values) {
+    this.reserve(values.length);
+    for (const value of values) this.buf[this.at++] = value;
+    return this;
+  }
+
+  u16(...values) {
+    this.reserve(values.length * 2);
+    for (const value of values) { this.view.setUint16(this.at, value); this.at += 2; }
+    return this;
+  }
+
+  u32(...values) {
+    this.reserve(values.length * 4);
+    for (const value of values) { this.view.setUint32(this.at, value); this.at += 4; }
+    return this;
+  }
+
+  u64(value) { return this.u32(Math.floor(value / 0x100000000), value >>> 0); }
+
+  zeros(count) {
+    this.reserve(count);
+    this.buf.fill(0, this.at, this.at + count);
+    this.at += count;
+    return this;
+  }
+
+  bytes(data) {
+    this.reserve(data.length);
+    this.buf.set(data, this.at);
+    this.at += data.length;
+    return this;
+  }
+
+  ascii(text) { return this.u8(...Array.from(text, c => c.charCodeAt(0))); }
+
+  matrix() { return this.u32(0x10000, 0, 0, 0, 0x10000, 0, 0, 0, 0x40000000); }
+
+  open(type) {
+    this.boxes.push(this.at);
+    return this.u32(0).ascii(type);
+  }
+
+  openFull(type, version, flags) { return this.open(type).u32(version << 24 | flags); }
+
+  close() {
+    const start = this.boxes.pop();
+    return this.patch(start, this.at - start);
+  }
+
+  patch(at, value) {
+    this.view.setUint32(at, value);
+    return this;
+  }
+
+  done() { return this.buf.subarray(0, this.at); }
+}
+
+function writeHeader(out, { sps, pps, width, height }) {
+  out.open('ftyp').ascii('iso5').u32(1).ascii('iso5').ascii('iso6').ascii('mp41').close();
+  out.open('moov');
+  out.openFull('mvhd', 0, 0).u32(0, 0, 1000, 0, 0x10000).u16(0x100).zeros(10).matrix().zeros(24).u32(2).close();
+  out.open('trak');
+  out.openFull('tkhd', 0, 3).u32(0, 0, 1, 0, 0).zeros(8).u16(0, 0, 0, 0).matrix().u32(width * 0x10000, height * 0x10000).close();
+  out.open('mdia');
+  out.openFull('mdhd', 0, 0).u32(0, 0, SCALE, 0).u16(0x55c4, 0).close();
+  out.openFull('hdlr', 0, 0).u32(0).ascii('vide').zeros(12).ascii('Notivisor\0').close();
+  out.open('minf');
+  out.openFull('vmhd', 0, 1).zeros(8).close();
+  out.open('dinf').openFull('dref', 0, 0).u32(1).openFull('url ', 0, 1).close().close().close();
+  out.open('stbl');
+  out.openFull('stsd', 0, 0).u32(1);
+  out.open('avc1').zeros(6).u16(1).zeros(16).u16(width, height).u32(0x480000, 0x480000, 0).u16(1).zeros(32).u16(0x18, 0xffff);
+  out.open('avcC').u8(1).bytes(sps.subarray(1, 4)).u8(0xfc | 3, 0xe0 | 1).u16(sps.length).bytes(sps).u8(1).u16(pps.length).bytes(pps).close();
+  out.close().close();
+  out.openFull('stts', 0, 0).u32(0).close();
+  out.openFull('stsc', 0, 0).u32(0).close();
+  out.openFull('stsz', 0, 0).u32(0, 0).close();
+  out.openFull('stco', 0, 0).u32(0).close();
+  out.close().close().close().close();
+  out.open('mvex').openFull('trex', 0, 0).u32(1, 1, 0, 0, 0).close().close();
+  return out.close();
+}
+
+function writeFragment(out, index, { units, key, at, span }) {
+  const size = units.reduce((sum, unit) => sum + 4 + unit.length, 0);
+  const moof = out.at;
+  out.open('moof');
+  out.openFull('mfhd', 0, 0).u32(index).close();
+  out.open('traf');
+  out.openFull('tfhd', 0, 0x020000).u32(1).close();
+  out.openFull('tfdt', 1, 0).u64(at).close();
+  out.openFull('trun', 0, 0x000701).u32(1);
+  const offset = out.at;
+  out.u32(0, span, size, key ? 0x02000000 : 0x01010000).close();
+  out.close().close();
+  out.patch(offset, out.at - moof + 8);
+  out.open('mdat');
+  for (const unit of units) out.u32(unit.length).bytes(unit);
+  return out.close();
+}
+
+// Trailing zeros before a start code belong to the byte stream, which also covers 4-byte start codes.
+function* nalUnits(data) {
+  let from = -1, zeros = 0;
+  for (let i = 0; i < data.length; i++) {
+    if (data[i] === 1 && zeros >= 2) {
+      if (from >= 0 && i - zeros > from) yield data.subarray(from, i - zeros);
+      from = i + 1;
+    }
+    zeros = data[i] === 0 ? zeros + 1 : 0;
+  }
+  if (from >= 0 && data.length - zeros > from) yield data.subarray(from, data.length - zeros);
 }
 
 function setStatus(next) {
@@ -845,9 +894,9 @@ function showStatus() {
 
 function resetPlayer() {
   parameters = null;
-  init = null;
+  header = null;
   buffer = null;
-  queue = [];
+  outbox = null;
   started = false;
   lastServer = null;
   mediaTime = 0;
@@ -861,68 +910,60 @@ function resetPlayer() {
 }
 
 function configure(width, height, data) {
-  const units = nalUnits(data);
+  const units = [...nalUnits(data)];
   const sps = units.find(unit => (unit[0] & 0x1f) === 7);
   const pps = units.find(unit => (unit[0] & 0x1f) === 8);
   if (!sps || !pps) return;
   const signature = `${width}x${height}|${sps.join()}|${pps.join()}`;
   if (signature === parameters) return;
 
-  const codec = 'avc1.' + [sps[1], sps[2], sps[3]].map(v => v.toString(16).padStart(2, '0')).join('');
-  const mime = `video/mp4; codecs="${codec}"`;
+  const hex = byte => (byte | 0x100).toString(16).slice(1);
+  const mime = `video/mp4; codecs="avc1.${hex(sps[1])}${hex(sps[2])}${hex(sps[3])}"`;
   if (!Source || !Source.isTypeSupported(mime)) { setStatus('codec'); return; }
 
   stopRecording();
   resetPlayer();
   parameters = signature;
-  init = initSegment(sps, pps, width, height);
-  queue = [init];
-  media = new Source();
-  if (window.ManagedMediaSource) video.disableRemotePlayback = true;
-  video.src = URL.createObjectURL(media);
-  const opened = media;
-  opened.addEventListener('sourceopen', () => {
-    if (media !== opened) return;
-    try {
-      buffer = opened.addSourceBuffer(mime);
-    } catch (error) {
-      setStatus('codec');
-      return;
-    }
-    buffer.mode = 'segments';
-    buffer.addEventListener('updateend', pump);
-    buffer.addEventListener('error', restart);
-    pump();
-  }, { once: true });
+  header = writeHeader(new Mp4Out(1024 + sps.length + pps.length), { sps, pps, width, height }).done();
+  outbox = new Mp4Out().bytes(header);
+  const source = new Source();
+  media = source;
+  source.onsourceopen = () => attach(source, mime);
+  video.src = URL.createObjectURL(source);
+}
+
+function attach(source, mime) {
+  source.onsourceopen = null;
+  if (media !== source) return;
+  try {
+    buffer = source.addSourceBuffer(mime);
+  } catch (error) {
+    setStatus('codec');
+    return;
+  }
+  buffer.onupdateend = flush;
+  buffer.onerror = restart;
+  flush();
 }
 
 function frame(time, data) {
   if (!parameters) return;
-  const units = nalUnits(data).filter(unit => {
+  const units = [...nalUnits(data)].filter(unit => {
     const type = unit[0] & 0x1f;
-    return type !== 7 && type !== 8 && type !== 9;
+    return type < 7 || type > 9;
   });
   if (!units.length) return;
   const key = units.some(unit => (unit[0] & 0x1f) === 5);
-  if (!started) {
-    if (!key) return;
-    started = true;
-  }
-  const sample = new Uint8Array(units.reduce((sum, unit) => sum + 4 + unit.length, 0));
-  const view = new DataView(sample.buffer);
-  let at = 0;
-  for (const unit of units) {
-    view.setUint32(at, unit.length);
-    sample.set(unit, at + 4);
-    at += 4 + unit.length;
-  }
+  if (!started && !key) return;
+  started = true;
   // The timeline is laid end to end: MSE drops everything up to the next keyframe once a frame lands
-  // more than two durations after the previous one, and the headset sends keyframes only on request.
-  const duration = lastServer === null ? 33333 : Math.min(100000, Math.max(1000, time - lastServer));
+  // more than two durations after the previous one, and the Quest casting service sends a keyframe only when asked.
+  const span = lastServer === null ? 33333 : Math.min(100000, Math.max(1000, time - lastServer));
   lastServer = time;
-  queue.push(mediaSegment(sequence++, mediaTime, duration, sample, key));
+  const sample = { units, key, at: mediaTime, span };
+  writeFragment(outbox, ++fragments, sample);
   lastAppend = performance.now();
-  // The buffer can only be cut at a keyframe: removing a range takes every frame up to the next one with it.
+  // Old video goes in whole groups of pictures; a cut in the middle of one would take the rest of the group with it.
   if (key) {
     if (keyAt !== null) trimTo = keyAt;
     keyAt = mediaTime;
@@ -930,29 +971,29 @@ function frame(time, data) {
     keyAsked = lastAppend;
     api('api/keyframe', {}).catch(() => {});
   }
-  mediaTime += duration;
-  if (recorder) recordSample(sample, duration, key);
+  mediaTime += span;
+  if (recorder) record(sample);
   meter.frames++;
   if (applying === 2) {
     applying = 0;
     showStatus();
   }
-  pump();
+  flush();
 }
 
-function pump() {
-  if (!buffer || buffer.updating || !queue.length) return;
+function flush() {
+  if (!buffer || buffer.updating) return;
   try {
     const ranges = buffer.buffered;
-    const cut = trimTo / SCALE - 0.0005;
+    const keepFrom = trimTo / SCALE - 0.0005;
     trimTo = 0;
-    if (ranges.length && ranges.start(0) < cut) {
-      buffer.remove(0, cut);
+    if (ranges.length && ranges.start(0) < keepFrom) {
+      buffer.remove(ranges.start(0), keepFrom);
       return;
     }
-    const next = queue.length === 1 ? queue[0] : concat(queue);
-    queue = [];
-    buffer.appendBuffer(next);
+    if (!outbox.at) return;
+    buffer.appendBuffer(outbox.done());
+    outbox = new Mp4Out();
   } catch (error) {
     restart();
   }
@@ -984,11 +1025,11 @@ setInterval(() => {
   if (buffer && ranges.length) {
     const start = ranges.start(ranges.length - 1);
     const end = ranges.end(ranges.length - 1);
-    const lag = end - video.currentTime;
+    const ahead = end - video.currentTime;
     // After a stall the decoder does not pick up a range that starts later by itself, the playhead has to be put into it.
-    const outside = video.currentTime < start || (now < rescueUntil && lag < -0.25);
-    if (lag > 0.5 || outside) video.currentTime = Math.max(start, end - 0.05);
-    video.playbackRate = lag > 0.2 ? 1.05 : 1;
+    const outside = video.currentTime < start || (now < rescueUntil && ahead < -0.25);
+    if (ahead > 0.5 || outside) video.currentTime = Math.max(start, end - 0.05);
+    video.playbackRate = ahead > 0.2 ? 1.05 : 1;
     if (video.paused) video.play().catch(() => {});
   }
   if (document.hidden || now - lastAppend > 1000) {
@@ -1007,11 +1048,11 @@ setInterval(() => {
 
 setInterval(() => {
   if (recorder) recNode.textContent = clock((Date.now() - recorder.since) / 1000);
-  if (!$('stats').hidden) {
+  if (!byId('stats').hidden) {
     const ranges = video.buffered;
-    const lag = ranges.length ? ranges.end(ranges.length - 1) - video.currentTime : 0;
-    $('stats').textContent = `${video.videoWidth}×${video.videoHeight}\n${meter.frames} ${T.fpsUnit} · ${(meter.bytes * 8 / 1e6).toFixed(1)} ${T.mbit}\n` +
-      `${T.bufferMs} ${Math.max(0, Math.round(lag * 1000))} ${T.ms}`;
+    const ahead = ranges.length ? ranges.end(ranges.length - 1) - video.currentTime : 0;
+    byId('stats').textContent = `${video.videoWidth}×${video.videoHeight}\n${meter.frames} ${T.fpsUnit} · ${(meter.bytes / 125000).toFixed(1)} ${T.mbit}\n` +
+      `${T.bufferMs} ${Math.max(0, Math.round(ahead * 1000))} ${T.ms}`;
   }
   meter.frames = 0;
   meter.bytes = 0;
@@ -1020,30 +1061,29 @@ setInterval(() => {
 video.addEventListener('playing', () => setStatus('live'));
 video.addEventListener('error', restart);
 video.addEventListener('leavepictureinpicture', settle);
-document.addEventListener('visibilitychange', () => {
-  if (document.hidden) return;
+function resume() {
+  if (document.visibilityState !== 'visible') return;
   jumpLive();
   poll();
-});
+}
+
+document.addEventListener('visibilitychange', resume);
 
 function sound(data) {
-  if (!audio || audio.state !== 'running') return;
-  const frames = data.length >> 2;
-  if (!frames) return;
-  const pcm = new DataView(data.buffer, data.byteOffset, frames * 4);
-  const chunk = audio.createBuffer(2, frames, RATE);
-  const left = chunk.getChannelData(0), right = chunk.getChannelData(1);
-  for (let i = 0; i < frames; i++) {
-    left[i] = pcm.getInt16(i * 4, true) / 32768;
-    right[i] = pcm.getInt16(i * 4 + 2, true) / 32768;
-  }
-  const node = audio.createBufferSource();
-  node.buffer = chunk;
-  node.connect(audio.destination);
-  const now = audio.currentTime;
-  if (audioTime < now + 0.02 || audioTime > now + 0.3) audioTime = now + 0.06;
-  node.start(audioTime);
-  audioTime += chunk.duration;
+  const ctx = audio;
+  const bytes = data.length & ~3;
+  if (!ctx || ctx.state !== 'running' || !bytes) return;
+  const interleaved = new Int16Array(data.slice(0, bytes).buffer);
+  const clip = ctx.createBuffer(2, bytes / 4, RATE);
+  clip.getChannelData(0).forEach((_, n, out) => { out[n] = interleaved[2 * n] / 32768; });
+  clip.getChannelData(1).forEach((_, n, out) => { out[n] = interleaved[2 * n + 1] / 32768; });
+  const voice = ctx.createBufferSource();
+  voice.buffer = clip;
+  voice.connect(ctx.destination);
+  const earliest = ctx.currentTime + 0.02;
+  if (audioTime < earliest || audioTime > earliest + 0.28) audioTime = earliest + 0.04;
+  voice.start(audioTime);
+  audioTime += clip.duration;
 }
 
 function toggleSound() {
@@ -1056,13 +1096,16 @@ function toggleSound() {
     audioTime = 0;
   }
   setGlyph(soundButton, audio ? 'volumeUp' : 'volumeOff', audio ? T.soundOff : T.soundOn);
-  soundButton.classList.toggle('on', !!audio);
+  soundButton.setAttribute('aria-pressed', String(!!audio));
 }
+
+// iPhone Safari has no Fullscreen API for elements, only native fullscreen of the video itself.
+const enterFullscreen = document.fullscreenEnabled ? () => castView.requestFullscreen().catch(() => {})
+  : video.webkitEnterFullscreen ? () => video.webkitEnterFullscreen() : null;
 
 function toggleFullscreen() {
   if (document.fullscreenElement) document.exitFullscreen();
-  else if (stage.requestFullscreen) stage.requestFullscreen();
-  else if (video.webkitEnterFullscreen) video.webkitEnterFullscreen();
+  else if (enterFullscreen) enterFullscreen();
 }
 
 function togglePip() {
@@ -1071,8 +1114,9 @@ function togglePip() {
 }
 
 function toggleStats() {
-  $('stats').hidden = !$('stats').hidden;
-  statsButton.classList.toggle('on', !$('stats').hidden);
+  const panel = byId('stats');
+  panel.toggleAttribute('hidden');
+  statsButton.setAttribute('aria-pressed', String(!panel.hidden));
 }
 
 function snapshot() {
@@ -1089,21 +1133,19 @@ function clock(seconds) {
 
 function toggleRecording() {
   if (recorder) { stopRecording(); return; }
-  if (!init) { toast(T.noPicture); return; }
-  recorder = { parts: [init], size: init.length, time: 0, number: 1, keyed: false, since: Date.now() };
+  if (!header) { toast(T.noPicture); return; }
+  recorder = { parts: [header], size: header.length, time: 0, count: 0, keyed: false, since: Date.now() };
   api('api/keyframe', {}).catch(() => {});
   showRecording();
 }
 
-function recordSample(sample, duration, key) {
-  if (!recorder.keyed) {
-    if (!key) return;
-    recorder.keyed = true;
-  }
-  const segment = mediaSegment(recorder.number++, recorder.time, duration, sample, key);
-  recorder.time += duration;
-  recorder.parts.push(segment);
-  recorder.size += segment.length;
+function record(sample) {
+  if (!recorder.keyed && !sample.key) return;
+  recorder.keyed = true;
+  const piece = writeFragment(new Mp4Out(), ++recorder.count, { ...sample, at: recorder.time }).done();
+  recorder.time += sample.span;
+  recorder.parts.push(piece);
+  recorder.size += piece.length;
   if (recorder.size < RECORD_LIMIT) return;
   stopRecording();
   toast(T.recLimit);
@@ -1131,18 +1173,18 @@ function showRecording() {
   recNode.textContent = '0:00';
 }
 
-function dispatch(type, data) {
+function dispatch(tag, data) {
   const view = new DataView(data.buffer, data.byteOffset, data.length);
-  if (type === TYPE_CONFIG) {
+  if (tag === TAG_CONFIG) {
     configure(view.getUint32(0), view.getUint32(4), data.subarray(8));
     if (applying === 1) applying = 2;
     if (status !== 'live' && status !== 'codec') setStatus('waiting');
-  } else if (type === TYPE_VIDEO) {
+  } else if (tag === TAG_VIDEO) {
     meter.bytes += data.length;
     frame(Number(view.getBigUint64(0)), data.subarray(8));
-  } else if (type === TYPE_SOUND) {
+  } else if (tag === TAG_SOUND) {
     sound(data.subarray(8));
-  } else if (type === TYPE_NOTICE && data.length) {
+  } else if (tag === TAG_NOTICE && data.length) {
     notice = data[0] ? { code: data[0], text: new TextDecoder().decode(data.subarray(1)) } : null;
     showStatus();
   }
@@ -1172,13 +1214,14 @@ async function connect() {
     for (;;) {
       const { value, done } = await reader.read();
       if (done) break;
-      const data = rest.length ? concat([rest, value]) : value;
+      const data = rest.length ? new Mp4Out(rest.length + value.length).bytes(rest).bytes(value).done() : value;
       let at = 0;
       while (data.length - at >= 5) {
-        const length = new DataView(data.buffer, data.byteOffset + at + 1, 4).getUint32(0);
-        if (data.length - at - 5 < length) break;
-        dispatch(data[at], data.subarray(at + 5, at + 5 + length));
-        at += 5 + length;
+        const size = new DataView(data.buffer, data.byteOffset + at, 4).getUint32(0);
+        if (size < 1) throw new Error('empty record');
+        if (data.length - at - 4 < size) break;
+        dispatch(String.fromCharCode(data[at + 4]), data.subarray(at + 5, at + 4 + size));
+        at += 4 + size;
       }
       rest = data.slice(at);
     }
@@ -1210,14 +1253,14 @@ function watch(on) {
 
 function openSheet() {
   sheetKey = '';
-  $('sheet').hidden = false;
-  tuneButton.classList.add('on');
+  byId('sheet').hidden = false;
+  tuneButton.setAttribute('aria-pressed', 'true');
   renderSheet();
 }
 
 function closeSheet() {
-  $('sheet').hidden = true;
-  tuneButton.classList.remove('on');
+  byId('sheet').hidden = true;
+  tuneButton.setAttribute('aria-pressed', 'false');
 }
 
 function renderSheet() {
@@ -1228,13 +1271,13 @@ function renderSheet() {
   const set = (label, control) => h('div', { class: 'set' }, h('div', { text: label }), control);
   const flag = (label, value, name) => h('div', { class: 'srow' }, label, toggle(value, on => setCast({ [name]: on }), label));
   const magic = cast.source === 'MAGIC' || cast.source === 'MAGIC_ADB';
-  $('sheet').replaceChildren(
+  byId('sheet').replaceChildren(
     h('div', { class: 'srow' }, h('h2', { text: T.settings }), iconButton('close', T.close, closeSheet)),
     set(T.source, segmented(cast.sources.map(id => ({ value: id, label: SOURCES[id] || id })), cast.source, value => setCast({ source: value }))),
     set(T.quality, segmented(cast.qualities.map(item => ({ value: item.id, label: item.id === 'EYE' ? T.eye : item.height + 'p' })), cast.quality,
       value => setCast({ quality: value }))),
     set(T.fps, segmented([30, 60].map(value => ({ value, label: String(value) })), cast.fps, value => setCast({ fps: value }))),
-    set(T.bitrate, segmented([0, 4, 8, 12, 20].map(value => ({ value: value * 1000000, label: value ? String(value) : T.auto })), cast.bitRate,
+    set(T.bitrate, segmented([0, 5, 10, 15, 25].map(value => ({ value: value * 1000000, label: value ? String(value) : T.auto })), cast.bitRate,
       value => setCast({ bitRate: value }))),
     magic && set(T.eyeSide, segmented([{ value: false, label: T.left }, { value: true, label: T.right }], cast.rightEye,
       value => setCast({ rightEye: value }))),
@@ -1285,7 +1328,7 @@ async function openApps() {
     drawApps();
   });
   apps.list = h('div', { class: 'list' });
-  $('apps').replaceChildren(
+  byId('apps').replaceChildren(
     h('div', { class: 'toolbar' }, h('h1', { text: T.apps }), h('span', { class: 'grow' }), search,
       h('label', { class: 'check' }, toggle(apps.system, on => { apps.system = on; drawApps(); }, T.system), T.system),
       button('filled', T.install, () => picker.click(), 'upload'), picker),
@@ -1364,7 +1407,7 @@ async function openFiles() {
   });
   files.crumbs = h('div', { class: 'crumbs' });
   files.list = h('div', { class: 'list' });
-  $('files').replaceChildren(
+  byId('files').replaceChildren(
     h('div', { class: 'toolbar' }, h('h1', { text: T.files }), h('span', { class: 'grow' }),
       button('filled', T.upload, () => picker.click(), 'upload'), button('tonal', T.newFolder, newFolder, 'newFolder'),
       iconButton('refresh', T.refresh, loadFiles), picker),
@@ -1461,7 +1504,7 @@ try { shell.history = JSON.parse(sessionStorage.getItem('notivisor.shell')) || [
 async function openShell() {
   if (!await entering('shell')) return;
   if (state.adb !== 'READY') {
-    $('shell').replaceChildren(h('div', { class: 'toolbar' }, h('h1', { text: T.shell })), h('div', { class: 'list' }, adbHelp(state.adb)));
+    byId('shell').replaceChildren(h('div', { class: 'toolbar' }, h('h1', { text: T.shell })), h('div', { class: 'list' }, adbHelp(state.adb)));
     return;
   }
   const head = h('div', { class: 'toolbar' }, h('h1', { text: T.shell }), h('span', { class: 'grow' }),
@@ -1475,7 +1518,7 @@ async function openShell() {
     shell.at = Math.min(shell.history.length, Math.max(0, shell.at + (event.key === 'ArrowUp' ? -1 : 1)));
     shell.input.value = shell.history[shell.at] || '';
   });
-  $('shell').replaceChildren(head,
+  byId('shell').replaceChildren(head,
     h('p', { class: 'note', text: T.shellNote }),
     h('div', { class: 'chips' }, QUICK_COMMANDS.map(command => h('button', { class: 'chip mono', type: 'button', text: command, onclick: () => run(command) }))),
     shell.out,
@@ -1532,7 +1575,7 @@ async function openDevice() {
   device.prox = toggle(false, setProximity, T.proximity);
   device.proxNote = h('div', { class: 'row-sub wrap' });
   device.log = h('pre', { class: 'log' });
-  $('device').replaceChildren(
+  byId('device').replaceChildren(
     h('div', { class: 'toolbar' }, h('h1', { text: T.device })),
     h('div', { class: 'cards' },
       device.info,
@@ -1640,12 +1683,12 @@ function route() {
   const wanted = location.hash.slice(1);
   current = SECTIONS.includes(wanted) ? wanted : 'cast';
   for (const id of SECTIONS) {
-    $(id).classList.toggle('active', id === current);
+    byId(id).classList.toggle('active', id === current);
     tabs[id].setAttribute('aria-current', id === current ? 'page' : 'false');
   }
   if (current === 'cast') {
     watch(true);
-    wake();
+    activity();
     return;
   }
   clearTimeout(leaveTimer);
@@ -1653,36 +1696,43 @@ function route() {
   openers[current]();
 }
 
-let idleTimer = 0;
-function wake() {
-  stage.classList.remove('idle');
-  clearTimeout(idleTimer);
-  idleTimer = setTimeout(() => $('sheet').hidden && stage.classList.add('idle'), 3000);
+let lastActivity = 0, overBar = false;
+
+function activity() {
+  lastActivity = performance.now();
+  updateBar();
+}
+
+function updateBar() {
+  const quiet = performance.now() - lastActivity > 2500;
+  castView.classList.toggle('idle', quiet && !overBar && !video.paused && status === 'live' && byId('sheet').hidden);
 }
 
 for (const id of SECTIONS) {
   tabs[id] = h('button', { type: 'button', onclick: () => { location.hash = id; } }, h('i', null, icon(SECTION_ICONS[id])), T[id]);
-  $('nav').append(tabs[id]);
+  byId('nav').append(tabs[id]);
 }
 
-$('bar').append(...[statusNode, recNode, soundButton, iconButton('camera', T.snapshot, snapshot), recButton,
+byId('bar').append(...[statusNode, recNode, soundButton, iconButton('camera', T.snapshot, snapshot), recButton,
   document.pictureInPictureEnabled && iconButton('pip', T.pip, togglePip), statsButton, tuneButton,
-  iconButton('fullscreen', T.fullscreen, toggleFullscreen)].filter(Boolean));
+  enterFullscreen && iconButton('fullscreen', T.fullscreen, toggleFullscreen)].filter(Boolean));
 tuneButton.hidden = true;
 
-['mousemove', 'touchstart', 'click'].forEach(name => stage.addEventListener(name, wake));
+['pointermove', 'pointerdown'].forEach(name => castView.addEventListener(name, activity));
+byId('bar').addEventListener('pointerenter', () => { overBar = true; });
+byId('bar').addEventListener('pointerleave', () => { overBar = false; });
+setInterval(updateBar, 250);
 video.addEventListener('dblclick', toggleFullscreen);
+const SHORTCUTS = { KeyF: toggleFullscreen, KeyM: toggleSound, KeyI: toggleStats };
 document.addEventListener('keydown', event => {
   if (current !== 'cast' || event.ctrlKey || event.metaKey || event.altKey || /^(INPUT|TEXTAREA|SELECT)$/.test(event.target.tagName)) return;
-  wake();
-  const key = event.key.toLowerCase();
-  if (key === 'f' || key === 'а') toggleFullscreen();
-  else if (key === 'm' || key === 'ь') toggleSound();
-  else if (key === 'i' || key === 'ш') toggleStats();
+  activity();
+  const action = SHORTCUTS[event.code];
+  if (action) action();
 });
 
-dropZone($('apps'), install);
-dropZone($('files'), sendFiles);
+dropZone(byId('apps'), install);
+dropZone(byId('files'), sendFiles);
 window.addEventListener('hashchange', route);
 setInterval(poll, 3000);
 showStatus();

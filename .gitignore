@@ -11,6 +11,8 @@ captures/
 .externalNativeBuild/
 .cxx/
 
+/app/full/
+/app/rustore/
 *.apk
 *.aab
 *.aar

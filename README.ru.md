@@ -83,11 +83,15 @@ Notivisor не делает ни того, ни другого. Сторонне
 Сборка из исходников:
 
 ```bash
-./gradlew :app:assembleDebug
-adb install -r app/build/outputs/apk/debug/app-debug.apk
+./gradlew :app:assembleFullDebug
+adb install -r app/build/outputs/apk/full/debug/app-full-debug.apk
 ```
 
 Нужен JDK 17, остальное подтянет Gradle wrapper.
+
+Сборок две. `full` идёт на GitHub и в Google Play. `rustore` — то же приложение без
+`WRITE_SECURE_SETTINGS`, которое RuStore не принимает: в этой сборке adb шлема после каждой
+перезагрузки включают с компьютера.
 
 ## Настройка
 

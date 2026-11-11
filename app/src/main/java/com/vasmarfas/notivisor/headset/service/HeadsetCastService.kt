@@ -17,7 +17,7 @@ import com.vasmarfas.notivisor.R
 import com.vasmarfas.notivisor.core.adb.AdbAccess
 import com.vasmarfas.notivisor.core.control.AudioSession
 import com.vasmarfas.notivisor.core.control.CapturePacket
-import com.vasmarfas.notivisor.core.control.CastConfig
+import com.vasmarfas.notivisor.core.control.CastOptions
 import com.vasmarfas.notivisor.core.control.CastSource
 import com.vasmarfas.notivisor.core.control.MagicCastSession
 import com.vasmarfas.notivisor.core.control.ProjectionSession
@@ -63,7 +63,7 @@ class HeadsetCastService : Service() {
     @Volatile
     private var generation = 0
 
-    private var config = CastConfig()
+    private var config = CastOptions()
     private var chosen = CastSource.MAGIC
     private var consent: Pair<Int, Intent>? = null
     private var capture: Thread? = null
@@ -124,7 +124,7 @@ class HeadsetCastService : Service() {
             val settings = BridgeSettings.get(this)
             source = CastSource.parse(intent?.getStringExtra(EXTRA_SOURCE))
             chosen = settings.castSource
-            config = settings.castConfig
+            config = settings.castOptions
             consent = projectionConsent(intent)
             error = null
             attempts = 0
@@ -215,7 +215,7 @@ class HeadsetCastService : Service() {
         }
         val wanted = settings.castSource.takeIf { it != chosen } ?: source
         chosen = settings.castSource
-        val next = settings.castConfig
+        val next = settings.castOptions
         val projecting = source == CastSource.PROJECTION || wanted == CastSource.PROJECTION
         if (projecting || (wanted == source && next == config)) {
             publish()
@@ -249,7 +249,7 @@ class HeadsetCastService : Service() {
         val server = WebCastServer(webPort, webPassword, page, hub, HeadsetWebApi(applicationContext, hub))
         runCatching { server.start() }.onFailure {
             BridgeLog.w(SCOPE, "browser view did not start: ${it.message}")
-            error = getString(R.string.cast_web_port_busy, webPort)
+            error = getString(R.string.cast_port_taken, webPort)
             return
         }
         web = server
@@ -286,7 +286,7 @@ class HeadsetCastService : Service() {
         BridgeLog.i(SCOPE, "capture starting via $selected")
     }
 
-    private fun capture(mine: Int, selected: CastSource, settings: CastConfig, token: Pair<Int, Intent>?) {
+    private fun capture(mine: Int, selected: CastSource, settings: CastOptions, token: Pair<Int, Intent>?) {
         val context = applicationContext
         if (selected == CastSource.MAGIC_ADB || selected == CastSource.SCRCPY) {
             val reason = when (HeadsetAdb.probe(context)) {
@@ -339,7 +339,7 @@ class HeadsetCastService : Service() {
         }
     }
 
-    private fun went(mine: Int, selected: CastSource, settings: CastConfig) {
+    private fun went(mine: Int, selected: CastSource, settings: CastOptions) {
         live = true
         error = null
         attempts = 0
@@ -516,13 +516,14 @@ class HeadsetCastService : Service() {
         return data?.let { intent.getIntExtra(EXTRA_RESULT_CODE, 0) to it }
     }
 
-    private fun scrcpyOptions(settings: CastConfig): String = buildString {
+    private fun scrcpyOptions(settings: CastOptions): String = buildString {
         append("max_fps=${settings.fps} video_codec_options=i-frame-interval=1")
         if (settings.bitRate > 0) append(" video_bit_rate=${settings.bitRate}")
     }
 
     private fun failureFor(selected: CastSource): Int = when (selected) {
-        CastSource.MAGIC, CastSource.MAGIC_ADB -> R.string.cast_error_no_service
+        CastSource.MAGIC -> R.string.cast_error_no_service_direct
+        CastSource.MAGIC_ADB -> R.string.cast_error_no_service
         CastSource.SCRCPY -> R.string.cast_error_no_scrcpy
         CastSource.PROJECTION -> R.string.cast_error_no_projection
     }

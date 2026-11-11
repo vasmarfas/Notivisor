@@ -40,7 +40,7 @@ object ProjectionSession {
     private val ready = LinkedBlockingQueue<CapturePacket>()
 
     @Synchronized
-    fun start(context: Context, resultCode: Int, data: Intent, config: CastConfig): Boolean = runCatching {
+    fun start(context: Context, resultCode: Int, data: Intent, config: CastOptions): Boolean = runCatching {
         close()
         val manager = context.getSystemService(MediaProjectionManager::class.java)
         val proj = manager.getMediaProjection(resultCode, data) ?: run {

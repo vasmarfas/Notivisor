@@ -80,11 +80,15 @@ which one it is running on by itself. Sideloading onto a Quest needs Developer M
 Building from source:
 
 ```bash
-./gradlew :app:assembleDebug
-adb install -r app/build/outputs/apk/debug/app-debug.apk
+./gradlew :app:assembleFullDebug
+adb install -r app/build/outputs/apk/full/debug/app-full-debug.apk
 ```
 
 JDK 17. Everything else comes from the Gradle wrapper.
+
+There are two flavors. `full` is the one for GitHub and Google Play. `rustore` is the same app
+without `WRITE_SECURE_SETTINGS`, which RuStore does not accept: in that build the headset's adb has
+to be switched back on from a computer after every reboot.
 
 ## Setup
 

@@ -28,20 +28,31 @@ class CastHubTest {
         listener.close()
     }
 
-    private fun connect(): Pair<Socket, DataInputStream> {
-        val client = Socket(listener.inetAddress, listener.localPort).apply { soTimeout = 2_000 }
+    private fun connect(window: Int = 0): Pair<Socket, DataInputStream> {
+        val client = Socket().apply {
+            soTimeout = 2_000
+            if (window > 0) receiveBufferSize = window
+            connect(listener.localSocketAddress)
+        }
         clients += client
-        return listener.accept() to DataInputStream(client.getInputStream())
+        val socket = listener.accept().apply { if (window > 0) sendBufferSize = window }
+        return socket to DataInputStream(client.getInputStream())
     }
 
     private fun DataInputStream.record(): Pair<Int, ByteArray> {
-        val type = readUnsignedByte()
-        val payload = ByteArray(readInt()).also { readFully(it) }
-        return type to payload
+        val size = readInt()
+        val tag = readUnsignedByte()
+        return tag to ByteArray(size - 1).also { readFully(it) }
+    }
+
+    private fun DataInputStream.video(): ByteArray {
+        val (type, payload) = record()
+        assertEquals(WebViewer.TAG_VIDEO.toInt(), type)
+        return payload.copyOfRange(8, payload.size)
     }
 
     @Test
-    fun `a late viewer starts from the parameter sets and the next keyframe`() {
+    fun `a late viewer starts at the keyframe already in the backlog`() {
         val (socket, input) = connect()
         hub.resize(CapturePacket.Size(1344, 1440))
         hub.config(CONFIG)
@@ -55,18 +66,18 @@ class CastHubTest {
         hub.frame(DELTA)
 
         val (configType, config) = input.record()
-        assertEquals(WebViewer.TYPE_CONFIG.toInt(), configType)
+        assertEquals(WebViewer.TAG_CONFIG.toInt(), configType)
         assertEquals(1344, config.int(0))
         assertEquals(1440, config.int(4))
         assertArrayEquals(CONFIG, config.copyOfRange(8, config.size))
 
-        val (keyType, key) = input.record()
-        assertEquals(WebViewer.TYPE_VIDEO.toInt(), keyType)
-        assertArrayEquals(KEY, key.copyOfRange(8, key.size))
-
-        val (deltaType, delta) = input.record()
-        assertEquals(WebViewer.TYPE_VIDEO.toInt(), deltaType)
-        assertArrayEquals(DELTA, delta.copyOfRange(8, delta.size))
+        assertArrayEquals(KEY, input.video())
+        assertArrayEquals(DELTA, input.video())
+        val (soundType, sound) = input.record()
+        assertEquals(WebViewer.TAG_SOUND.toInt(), soundType)
+        assertArrayEquals(byteArrayOf(1, 2, 3, 4), sound.copyOfRange(8, sound.size))
+        assertArrayEquals(KEY, input.video())
+        assertArrayEquals(DELTA, input.video())
         assertEquals("a burst of frames asks for a keyframe once", 1, keyframeRequests)
     }
 
@@ -79,7 +90,7 @@ class CastHubTest {
 
         assertArrayEquals(byteArrayOf(WebViewer.NOTICE_STARTING), early.record().second)
         val (type, trouble) = early.record()
-        assertEquals(WebViewer.TYPE_NOTICE.toInt(), type)
+        assertEquals(WebViewer.TAG_NOTICE.toInt(), type)
         assertEquals(WebViewer.NOTICE_TROUBLE, trouble[0])
         assertEquals("no adb", trouble.copyOfRange(1, trouble.size).toString(Charsets.UTF_8))
 
@@ -93,7 +104,26 @@ class CastHubTest {
         hub.resize(CapturePacket.Size(1344, 1440))
         hub.config(CONFIG)
         hub.frame(KEY)
-        assertEquals(WebViewer.TYPE_CONFIG.toInt(), fresh.record().first)
+        assertEquals(WebViewer.TAG_CONFIG.toInt(), fresh.record().first)
+    }
+
+    @Test
+    fun `a browser record starts with a length that counts its letter tag`() {
+        val (socket, input) = connect()
+        hub.add(WebViewer(socket, hub::remove))
+        hub.notice(WebViewer.NOTICE_TROUBLE, "x")
+        val notice = ByteArray(7).also { input.readFully(it) }
+        assertArrayEquals(byteArrayOf(0, 0, 0, 3, 'N'.code.toByte(), 2, 'x'.code.toByte()), notice)
+
+        hub.resize(CapturePacket.Size(1344, 1440))
+        hub.config(CONFIG)
+        hub.frame(KEY)
+        hub.sound(byteArrayOf(5))
+        assertEquals('C'.code, input.record().first)
+        assertEquals('V'.code, input.record().first)
+        val (tag, sound) = input.record()
+        assertEquals('S'.code, tag)
+        assertEquals(Long.SIZE_BYTES + 1, sound.size)
     }
 
     @Test
@@ -103,16 +133,17 @@ class CastHubTest {
         hub.resize(CapturePacket.Size(1344, 1440))
         hub.config(CONFIG)
         hub.frame(KEY)
+        assertEquals(WebViewer.TAG_CONFIG.toInt(), input.record().first)
+        assertArrayEquals(KEY, input.video())
+
         hub.reset()
         hub.resize(CapturePacket.Size(1344, 1440))
         hub.frame(DELTA)
         hub.config(CONFIG)
         hub.frame(KEY)
 
-        assertEquals(WebViewer.TYPE_CONFIG.toInt(), input.record().first)
-        assertArrayEquals(KEY, input.record().second.drop(8).toByteArray())
-        assertEquals(WebViewer.TYPE_CONFIG.toInt(), input.record().first)
-        assertArrayEquals(KEY, input.record().second.drop(8).toByteArray())
+        assertEquals(WebViewer.TAG_CONFIG.toInt(), input.record().first)
+        assertArrayEquals(KEY, input.video())
     }
 
     @Test
@@ -135,17 +166,22 @@ class CastHubTest {
     }
 
     @Test
-    fun `a resize drops the phone and makes browsers wait for new parameters`() {
+    fun `a resize drops the phone and lets browsers continue from new parameters`() {
         val (phoneSocket, phoneInput) = connect()
         val (webSocket, webInput) = connect()
-        hub.add(PhoneViewer(phoneSocket, hub::remove))
+        val phone = PhoneViewer(phoneSocket, hub::remove)
+        hub.add(phone)
         hub.add(WebViewer(webSocket, hub::remove))
         hub.resize(CapturePacket.Size(1280, 720))
         hub.config(CONFIG)
         hub.frame(KEY)
+        phoneInput.readFully(ByteArray(8 + 4 + CONFIG.size + 4 + KEY.size))
+        assertEquals(WebViewer.TAG_CONFIG.toInt(), webInput.record().first)
+        assertArrayEquals(KEY, webInput.video())
         assertEquals(2, hub.audience)
 
         hub.resize(CapturePacket.Size(1920, 1080))
+        assertTrue(phone.outgrown)
         assertEquals(1, hub.audience)
         assertEquals(1, hub.browsers)
 
@@ -153,11 +189,10 @@ class CastHubTest {
         hub.config(CONFIG)
         hub.frame(KEY)
 
-        assertEquals(WebViewer.TYPE_CONFIG.toInt(), webInput.record().first)
-        assertEquals(WebViewer.TYPE_VIDEO.toInt(), webInput.record().first)
         val (type, config) = webInput.record()
-        assertEquals(WebViewer.TYPE_CONFIG.toInt(), type)
+        assertEquals(WebViewer.TAG_CONFIG.toInt(), type)
         assertEquals(1920, config.int(0))
+        assertArrayEquals(KEY, webInput.video())
 
         val closed = try {
             while (phoneInput.read() >= 0) Unit
@@ -170,9 +205,102 @@ class CastHubTest {
         assertTrue("the phone connection stayed open after the resize", closed)
     }
 
+    @Test
+    fun `keyframe requests are spaced out except for a new viewer`() {
+        hub.refresh()
+        hub.refresh()
+        assertEquals(1, keyframeRequests)
+
+        val (socket, _) = connect()
+        hub.add(WebViewer(socket, hub::remove))
+        assertEquals(2, keyframeRequests)
+        hub.refresh()
+        assertEquals(2, keyframeRequests)
+
+        Thread.sleep(600)
+        hub.refresh()
+        assertEquals(3, keyframeRequests)
+    }
+
+    @Test
+    fun `a stalled reader jumps to the newest keyframe while a quick one receives every frame`() {
+        val (slowSocket, slowInput) = connect(window = 4096)
+        val (fastSocket, fastInput) = connect()
+        hub.resize(CapturePacket.Size(1280, 720))
+        hub.config(CONFIG)
+        hub.frame(KEY)
+        hub.add(WebViewer(slowSocket, hub::remove))
+        hub.add(WebViewer(fastSocket, hub::remove))
+        assertEquals(WebViewer.TAG_CONFIG.toInt(), fastInput.record().first)
+        assertArrayEquals(KEY, fastInput.video())
+
+        val heavy = ByteArray(128 * 1024).also { DELTA.copyInto(it) }
+        val newest = KEY + 7.toByte()
+        repeat(HEAVY_FRAMES) {
+            hub.frame(heavy)
+            assertEquals(heavy.size, fastInput.video().size)
+        }
+        hub.frame(newest)
+        assertArrayEquals(newest, fastInput.video())
+        hub.frame(DELTA)
+        assertArrayEquals(DELTA, fastInput.video())
+
+        assertEquals(WebViewer.TAG_CONFIG.toInt(), slowInput.record().first)
+        var before = 0
+        while (!slowInput.video().contentEquals(newest)) before++
+        assertTrue("the slow viewer got all $before frames instead of skipping", before < 1 + HEAVY_FRAMES)
+        assertArrayEquals(DELTA, slowInput.video())
+    }
+
+    @Test
+    fun `a stalled reader does not keep asking for keyframes while one is in the backlog`() {
+        val (slowSocket, _) = connect(window = 4096)
+        hub.resize(CapturePacket.Size(1280, 720))
+        hub.config(CONFIG)
+        hub.frame(KEY)
+        hub.add(WebViewer(slowSocket, hub::remove))
+        val heavy = ByteArray(128 * 1024).also { DELTA.copyInto(it) }
+        repeat(HEAVY_FRAMES) { hub.frame(heavy) }
+        hub.frame(KEY)
+        val asked = keyframeRequests
+        repeat(6) {
+            Thread.sleep(100)
+            hub.frame(DELTA)
+        }
+        assertEquals(asked, keyframeRequests)
+    }
+
+    @Test
+    fun `a notice the browser has not read yet survives a resize`() {
+        val (socket, input) = connect(window = 4096)
+        hub.resize(CapturePacket.Size(1280, 720))
+        hub.config(CONFIG)
+        hub.frame(KEY)
+        hub.add(WebViewer(socket, hub::remove))
+        assertEquals(WebViewer.TAG_CONFIG.toInt(), input.record().first)
+        assertArrayEquals(KEY, input.video())
+
+        hub.frame(ByteArray(256 * 1024).also { DELTA.copyInto(it) })
+        val length = input.readInt()
+        assertEquals(WebViewer.TAG_VIDEO.toInt(), input.readUnsignedByte())
+        hub.notice(WebViewer.NOTICE_LIVE)
+        hub.resize(CapturePacket.Size(1920, 1080))
+        hub.config(CONFIG)
+        hub.frame(KEY)
+        input.readFully(ByteArray(length - 1))
+
+        val (type, live) = input.record()
+        assertEquals(WebViewer.TAG_NOTICE.toInt(), type)
+        assertArrayEquals(byteArrayOf(WebViewer.NOTICE_LIVE), live)
+        val (configType, config) = input.record()
+        assertEquals(WebViewer.TAG_CONFIG.toInt(), configType)
+        assertEquals(1920, config.int(0))
+    }
+
     private fun ByteArray.int(at: Int): Int = ByteBuffer.wrap(this, at, 4).int
 
     private companion object {
+        const val HEAVY_FRAMES = 96
         val CONFIG = byteArrayOf(0, 0, 0, 1, 0x67, 0x42, 0, 0x1F, 0, 0, 0, 1, 0x68, 0xCE.toByte(), 0x3C, 0x80.toByte())
         val KEY = byteArrayOf(0, 0, 0, 1, 0x09, 0x10, 0, 0, 1, 0x65, 0x88.toByte(), 0x84.toByte())
         val DELTA = byteArrayOf(0, 0, 0, 1, 0x41, 0x9A.toByte(), 0x02)

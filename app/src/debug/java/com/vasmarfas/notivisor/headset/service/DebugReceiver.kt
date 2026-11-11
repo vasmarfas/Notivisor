@@ -240,7 +240,7 @@ class DebugReceiver : BroadcastReceiver() {
             }
 
             "castset" -> {
-                var config = settings.castConfig
+                var config = settings.castOptions
                 intent.getStringExtra("quality")?.let { name ->
                     CastQuality.entries.firstOrNull { it.name == name }?.let { config = config.copy(quality = it) }
                 }
@@ -248,7 +248,7 @@ class DebugReceiver : BroadcastReceiver() {
                 if (intent.hasExtra("bitrate")) config = config.copy(bitRate = intent.getIntExtra("bitrate", 0))
                 if (intent.hasExtra("right")) config = config.copy(rightEye = intent.getBooleanExtra("right", true))
                 if (intent.hasExtra("sound")) config = config.copy(sound = intent.getBooleanExtra("sound", true))
-                settings.castConfig = config
+                settings.castOptions = config
                 intent.getStringExtra("source")?.let { settings.castSource = CastSource.parse(it) }
                 HeadsetCastService.refresh(context)
                 BridgeLog.i(SCOPE, "castset: ${settings.castSource} $config")
@@ -265,7 +265,7 @@ class DebugReceiver : BroadcastReceiver() {
 
             "castprobe" -> Thread {
                 val viaAdb = intent.getBooleanExtra("adb", false)
-                if (!MagicCastSession.start(context, settings.castConfig, viaAdb)) {
+                if (!MagicCastSession.start(context, settings.castOptions, viaAdb)) {
                     BridgeLog.w(SCOPE, "castprobe: casting service never came up")
                     return@Thread
                 }

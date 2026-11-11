@@ -9,7 +9,7 @@ enum class CastQuality(val width: Int, val height: Int) {
     val longSide: Int get() = maxOf(width, height)
 }
 
-data class CastConfig(
+data class CastOptions(
     val quality: CastQuality = CastQuality.EYE,
     val fps: Int = 30,
     val bitRate: Int = 0,

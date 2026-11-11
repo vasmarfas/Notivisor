@@ -3,7 +3,7 @@ package com.vasmarfas.notivisor.core.settings
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
-import com.vasmarfas.notivisor.core.control.CastConfig
+import com.vasmarfas.notivisor.core.control.CastOptions
 import com.vasmarfas.notivisor.core.control.CastQuality
 import com.vasmarfas.notivisor.core.control.CastSource
 import com.vasmarfas.notivisor.core.protocol.Pairing
@@ -104,8 +104,8 @@ class BridgeSettings private constructor(private val prefs: SharedPreferences) {
         get() = CastSource.parse(prefs.getString(KEY_CAST_SOURCE, null))
         set(value) = put { putString(KEY_CAST_SOURCE, value.name) }
 
-    var castConfig: CastConfig
-        get() = CastConfig(
+    var castOptions: CastOptions
+        get() = CastOptions(
             quality = runCatching { CastQuality.valueOf(prefs.getString(KEY_CAST_QUALITY, null) ?: "") }
                 .getOrDefault(CastQuality.EYE),
             fps = prefs.getInt(KEY_CAST_FPS, 30),

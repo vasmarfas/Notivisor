@@ -76,7 +76,7 @@ import com.vasmarfas.notivisor.R
 import com.vasmarfas.notivisor.RoleCard
 import com.vasmarfas.notivisor.core.adb.AdbAccess
 import com.vasmarfas.notivisor.core.adb.AdbConnection
-import com.vasmarfas.notivisor.core.control.CastConfig
+import com.vasmarfas.notivisor.core.control.CastOptions
 import com.vasmarfas.notivisor.core.control.CastQuality
 import com.vasmarfas.notivisor.core.control.CastSource
 import com.vasmarfas.notivisor.core.control.MirrorState
@@ -819,7 +819,7 @@ private fun rememberCastStarter(settings: BridgeSettings): (web: Boolean) -> Uni
         } else {
             pendingWeb = web
             val audio = context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
-            if (settings.castConfig.sound && !audio) {
+            if (settings.castOptions.sound && !audio) {
                 microphone.launch(Manifest.permission.RECORD_AUDIO)
             } else {
                 consent.launch(projections.createScreenCaptureIntent())
@@ -839,10 +839,10 @@ private fun HeadsetCastSection(settings: BridgeSettings, startCast: (web: Boolea
     val status by HeadsetCastService.status.collectAsStateWithLifecycle()
     val revision by settings.revision.collectAsStateWithLifecycle()
     val source = revision.let { settings.castSource }
-    val config = revision.let { settings.castConfig }
+    val config = revision.let { settings.castOptions }
     val host = settings.tcpHost
-    val configure: (CastConfig) -> Unit = {
-        settings.castConfig = it
+    val configure: (CastOptions) -> Unit = {
+        settings.castOptions = it
         HeadsetCastService.refresh(context)
     }
 
@@ -1136,7 +1136,7 @@ private fun Caption(text: String) {
 }
 
 private val CAST_FPS = listOf(30, 60)
-private val CAST_BIT_RATES = listOf(0, 4_000_000, 8_000_000, 12_000_000, 20_000_000)
+private val CAST_BIT_RATES = listOf(0, 5_000_000, 10_000_000, 15_000_000, 25_000_000)
 private val WEB_PORTS = 1024..65535
 private const val QR_PX = 480
 

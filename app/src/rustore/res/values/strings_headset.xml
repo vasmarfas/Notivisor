@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="adb_steps">1. Connect the headset to a computer by cable and run: adb tcpip 5555\n2. Tap \"Check\" and choose \"Always allow from this computer\" in the headset.\n\nThis build cannot switch wireless debugging back on by itself, so step 1 is needed again after every reboot of the headset. The build from GitHub does it without a computer.</string>
+</resources>

@@ -1,8 +1,8 @@
 package com.vasmarfas.notivisor.core.control
 
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import androidx.core.os.bundleOf
 import com.vasmarfas.notivisor.core.adb.AdbConnection
 import com.vasmarfas.notivisor.core.adb.AdbIdentity
 import com.vasmarfas.notivisor.core.transport.TransportConfig
@@ -27,6 +27,9 @@ object MagicCastSession {
     private var direct = false
 
     @Volatile
+    private var session: String? = null
+
+    @Volatile
     private var server: ServerSocket? = null
     private val sockets = mutableListOf<Socket>()
     private var accepting: Thread? = null
@@ -41,7 +44,7 @@ object MagicCastSession {
     private var announced: CapturePacket.Size? = null
 
     @Volatile
-    private var config = CastConfig()
+    private var config = CastOptions()
 
     private val ready = LinkedBlockingQueue<CapturePacket>()
     private val sendLock = Any()
@@ -50,7 +53,7 @@ object MagicCastSession {
     private var topic = 0
 
     @Synchronized
-    fun start(context: Context, config: CastConfig, viaAdb: Boolean): Boolean = runCatching {
+    fun start(context: Context, config: CastOptions, viaAdb: Boolean): Boolean = runCatching {
         release(context)
         this.config = config
         val listener = ServerSocket(TransportConfig.MAGIC_CAST_PORT, BACKLOG, InetAddress.getByName(LOOPBACK))
@@ -108,10 +111,11 @@ object MagicCastSession {
             runCatching { tearDown(connection) }
             runCatching { connection.close() }
         }
-        if (direct) runCatching { context.stopService(Intent().setComponent(SERVICE)) }
+        if (direct) runCatching { context.stopService(castingService()) }
         server = null
         dadb = null
         direct = false
+        session = null
     }
 
     private fun connectViaAdb(context: Context, listener: ServerSocket): Socket? {
@@ -138,32 +142,30 @@ object MagicCastSession {
             return null
         }
         direct = true
-        repeat(DIRECT_ATTEMPTS) { attempt ->
-            if (attempt > 0) {
+        val address = arrayOf("$LOOPBACK:${listener.localPort}")
+        for (attempt in 1..DIRECT_ATTEMPTS) {
+            if (attempt > 1) {
                 BridgeLog.w(SCOPE, "casting service never called back, restarting it")
-                context.stopService(Intent().setComponent(SERVICE))
+                context.stopService(castingService())
                 Thread.sleep(SETTLE_MS)
             }
-            val started = context.startForegroundService(
-                Intent("$CASTING_SERVICE.START_SERVICE")
-                    .setComponent(SERVICE)
-                    .putExtra("id", context.packageName)
-            )
-            if (started == null) {
+            val launch = castingService("$CASTING_SERVICE.START_SERVICE")
+                .putExtras(bundleOf(EXTRA_CLIENT to context.packageName))
+            if (context.startForegroundService(launch) == null) {
                 BridgeLog.w(SCOPE, "the casting service refused to start")
                 return null
             }
             Thread.sleep(INIT_MS)
-            context.sendBroadcast(
-                Intent("$CASTING_SERVICE.CONNECT")
-                    .setPackage(CASTING_SERVICE)
-                    .putExtra("servers", arrayOf("$LOOPBACK:${listener.localPort}"))
-                    .putExtra("session_uuid", UUID.randomUUID().toString())
-            )
+            val id = UUID.randomUUID().toString().also { session = it }
+            val call = bundleOf(EXTRA_SERVERS to address, EXTRA_SESSION to id)
+            context.sendBroadcast(Intent("$CASTING_SERVICE.CONNECT").setPackage(CASTING_SERVICE).putExtras(call))
             accept(listener)?.let { return it }
         }
         return null
     }
+
+    private fun castingService(action: String? = null): Intent =
+        Intent(action).setClassName(CASTING_SERVICE, "$CASTING_SERVICE.CastingService")
 
     private fun accept(listener: ServerSocket): Socket? =
         runCatching { listener.accept() }.getOrNull()?.also { register(it) }
@@ -299,11 +301,13 @@ object MagicCastSession {
             MESSAGE_HANDSHAKE -> {
                 val quality = config.quality
                 BridgeLog.i(SCOPE, "handshake, asking for ${quality.width}x${quality.height} at ${config.fps} fps")
-                send(message(TYPE_SET_AUDIO_STATE, if (config.sound) 1 else 0))
-                send(property(PROPERTY_BIT_RATE, if (config.bitRate > 0) config.bitRate.toString() else ""))
-                send(property(PROPERTY_MAX_WIDTH, quality.width.toString()))
-                send(property(PROPERTY_MAX_HEIGHT, quality.height.toString()))
+                mapOf(
+                    "maxWidth" to quality.width.toString(),
+                    "maxHeight" to quality.height.toString(),
+                    "bitrate" to config.bitRate.takeIf { it > 0 }?.toString().orEmpty(),
+                ).forEach { (name, value) -> send(property("debug.oculus.magic.$name", value)) }
                 send(eyeFovConfig())
+                send(message(TYPE_SET_AUDIO_STATE, if (config.sound) 1 else 0))
                 send(startCasting())
             }
 
@@ -430,8 +434,8 @@ object MagicCastSession {
         .array()
 
     private fun startCasting(): ByteArray {
-        val session = if (direct) string(UUID.randomUUID().toString()) else ByteArray(0)
-        return ByteBuffer.allocate(28 + session.size)
+        val tail = session?.let(::string) ?: ByteArray(0)
+        return ByteBuffer.allocate(28 + tail.size)
             .putInt(TYPE_START_CASTING)
             .putInt(config.quality.width)
             .putInt(config.quality.height)
@@ -439,7 +443,7 @@ object MagicCastSession {
             .putInt(if (config.rightEye) 1 else 0)
             .putInt(config.fps)
             .putInt(if (config.stabilized) 1 else 0)
-            .put(session)
+            .put(tail)
             .array()
     }
 
@@ -515,11 +519,9 @@ object MagicCastSession {
 
     private const val METACAM = "com.oculus.metacam/com.oculus.metacam.casting.CastingService"
     private const val CASTING_SERVICE = "com.oculus.magicislandcastingservice"
-    private val SERVICE = ComponentName(CASTING_SERVICE, "$CASTING_SERVICE.CastingService")
-
-    private const val PROPERTY_BIT_RATE = "debug.oculus.magic.bitrate"
-    private const val PROPERTY_MAX_WIDTH = "debug.oculus.magic.maxWidth"
-    private const val PROPERTY_MAX_HEIGHT = "debug.oculus.magic.maxHeight"
+    private const val EXTRA_CLIENT = "id"
+    private const val EXTRA_SERVERS = "servers"
+    private const val EXTRA_SESSION = "session_uuid"
 
     private const val APP_HEADER = 24
     private const val VIDEO_HEADER = 16
