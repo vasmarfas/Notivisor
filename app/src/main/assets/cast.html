@@ -702,11 +702,12 @@ function apply(next) {
 }
 
 function renderTop() {
-  byId('top').replaceChildren(
+  byId('top').replaceChildren(...[
     h('div', { class: 'name', text: state ? state.device.name : 'Notivisor' }),
     state && h('div', { class: 'stats' },
       h('span', { class: 'stat', title: T.battery }, icon(state.battery.charging ? 'bolt' : 'battery'), state.battery.level + '%'),
-      h('span', { class: 'stat', title: T.viewers }, icon('eye'), String(state.cast.viewers))));
+      h('span', { class: 'stat', title: T.viewers }, icon('eye'), String(state.cast.viewers))),
+  ].filter(Boolean));
 }
 
 function blocked(root) {
@@ -1271,7 +1272,7 @@ function renderSheet() {
   const set = (label, control) => h('div', { class: 'set' }, h('div', { text: label }), control);
   const flag = (label, value, name) => h('div', { class: 'srow' }, label, toggle(value, on => setCast({ [name]: on }), label));
   const magic = cast.source === 'MAGIC' || cast.source === 'MAGIC_ADB';
-  byId('sheet').replaceChildren(
+  byId('sheet').replaceChildren(...[
     h('div', { class: 'srow' }, h('h2', { text: T.settings }), iconButton('close', T.close, closeSheet)),
     set(T.source, segmented(cast.sources.map(id => ({ value: id, label: SOURCES[id] || id })), cast.source, value => setCast({ source: value }))),
     set(T.quality, segmented(cast.qualities.map(item => ({ value: item.id, label: item.id === 'EYE' ? T.eye : item.height + 'p' })), cast.quality,
@@ -1283,7 +1284,8 @@ function renderSheet() {
       value => setCast({ rightEye: value }))),
     magic && flag(T.stabilized, cast.stabilized, 'stabilized'),
     flag(T.soundSetting, cast.sound, 'sound'),
-    h('p', { class: 'note', text: T.settingsNote }));
+    h('p', { class: 'note', text: T.settingsNote }),
+  ].filter(Boolean));
 }
 
 async function setCast(change) {
