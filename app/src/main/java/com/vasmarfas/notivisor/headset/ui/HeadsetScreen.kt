@@ -1,8 +1,11 @@
 package com.vasmarfas.notivisor.headset.ui
 
 import android.Manifest
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.media.projection.MediaProjectionManager
 import android.os.Build
 import android.provider.Settings
 import android.view.Surface
@@ -12,6 +15,7 @@ import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.StringRes
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -20,10 +24,12 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Notifications
@@ -38,6 +44,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -52,6 +59,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -65,6 +74,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vasmarfas.notivisor.AppRole
 import com.vasmarfas.notivisor.R
 import com.vasmarfas.notivisor.RoleCard
+import com.vasmarfas.notivisor.core.adb.AdbAccess
+import com.vasmarfas.notivisor.core.adb.AdbConnection
+import com.vasmarfas.notivisor.core.control.CastConfig
+import com.vasmarfas.notivisor.core.control.CastQuality
+import com.vasmarfas.notivisor.core.control.CastSource
 import com.vasmarfas.notivisor.core.control.MirrorState
 import com.vasmarfas.notivisor.core.control.ScrcpySession
 import com.vasmarfas.notivisor.core.control.ScreenReceiver
@@ -81,9 +95,11 @@ import com.vasmarfas.notivisor.core.transport.TransportConfig
 import com.vasmarfas.notivisor.core.transport.TransportKind
 import com.vasmarfas.notivisor.core.transport.ble.BlePermissions
 import com.vasmarfas.notivisor.core.ui.AboutCard
+import com.vasmarfas.notivisor.core.ui.ButtonRow
 import com.vasmarfas.notivisor.core.ui.HealthTone
 import com.vasmarfas.notivisor.core.ui.InfoRow
 import com.vasmarfas.notivisor.core.ui.LogPanel
+import com.vasmarfas.notivisor.core.ui.QrCode
 import com.vasmarfas.notivisor.core.ui.SectionCard
 import com.vasmarfas.notivisor.core.ui.SegmentedChoice
 import com.vasmarfas.notivisor.core.ui.SendFilesButton
@@ -91,11 +107,17 @@ import com.vasmarfas.notivisor.core.ui.SettingRow
 import com.vasmarfas.notivisor.core.ui.StatRow
 import com.vasmarfas.notivisor.core.ui.StatusBanner
 import com.vasmarfas.notivisor.core.ui.VersionNotice
+import com.vasmarfas.notivisor.core.ui.castSourceHint
+import com.vasmarfas.notivisor.core.ui.castSourceLabel
+import com.vasmarfas.notivisor.core.ui.theme.LocalStatusColors
 import com.vasmarfas.notivisor.core.util.BridgeLog
+import com.vasmarfas.notivisor.core.util.localAddress
+import com.vasmarfas.notivisor.headset.core.HeadsetAdb
 import com.vasmarfas.notivisor.headset.core.HeadsetBridge
 import com.vasmarfas.notivisor.headset.core.HeadsetOverlay
 import com.vasmarfas.notivisor.headset.core.HeadsetProximity
 import com.vasmarfas.notivisor.headset.core.ShadeState
+import com.vasmarfas.notivisor.headset.core.WebCastServer
 import com.vasmarfas.notivisor.headset.service.HeadsetCastService
 import com.vasmarfas.notivisor.headset.service.RemoteKeyboardService
 import kotlinx.coroutines.Dispatchers
@@ -127,6 +149,7 @@ fun HeadsetScreen() {
     var searching by remember { mutableStateOf(false) }
     var searchFailed by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    val startCast = rememberCastStarter(settings)
 
     val activity = LocalActivity.current
     val cameraDeclared = remember { HeadsetCamera.isDeclared(context) }
@@ -272,7 +295,7 @@ fun HeadsetScreen() {
                 item { VersionNotice(peer) }
 
                 item {
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    ButtonRow {
                         Button(
                             onClick = {
                                 val missing = BlePermissions.missing(context, HeadsetCamera.permissions)
@@ -282,11 +305,9 @@ fun HeadsetScreen() {
                                     cameraLauncher.launch(missing.toTypedArray())
                                 }
                             },
-                            modifier = Modifier.weight(1f),
                         ) { Text(stringResource(R.string.action_scan)) }
                         OutlinedButton(
                             onClick = { HeadsetBridge.selfTest() },
-                            modifier = Modifier.weight(1f),
                         ) { Text(stringResource(R.string.action_test_notification)) }
                     }
                 }
@@ -428,10 +449,7 @@ fun HeadsetScreen() {
                                     MaterialTheme.colorScheme.onSurfaceVariant
                                 },
                             )
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
+                            ButtonRow {
                                 Button(
                                     enabled = !searching,
                                     onClick = {
@@ -506,7 +524,11 @@ fun HeadsetScreen() {
                 HeadsetTab.STREAM -> {
                 item { ScreenMirrorSection(settings) }
 
-                item { HeadsetCastSection(settings) }
+                item { HeadsetCastSection(settings, startCast) }
+
+                item { HeadsetWebSection(settings, startCast) }
+
+                item { AdbSection() }
                 }
 
                 HeadsetTab.NOTIFICATIONS -> {
@@ -662,7 +684,7 @@ private fun ScreenMirrorSection(settings: BridgeSettings) {
                 color = MaterialTheme.colorScheme.error,
             )
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        ButtonRow {
             Button(
                 onClick = {
                     val currentSurface = surface
@@ -769,41 +791,159 @@ private fun ShadeSection(settings: BridgeSettings) {
 }
 
 @Composable
-private fun HeadsetCastSection(settings: BridgeSettings) {
+private fun rememberCastStarter(settings: BridgeSettings): (web: Boolean) -> Unit {
     val context = LocalContext.current
-    val casting by HeadsetCastService.running.collectAsStateWithLifecycle()
+    var pendingWeb by remember { mutableStateOf<Boolean?>(null) }
+    val projections = remember { context.getSystemService(MediaProjectionManager::class.java) }
+
+    val consent = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val web = pendingWeb ?: return@rememberLauncherForActivityResult
+        pendingWeb = null
+        val data = result.data
+        if (result.resultCode == Activity.RESULT_OK && data != null) {
+            launchCast(context, CastSource.PROJECTION, web, result.resultCode to data)
+        } else {
+            BridgeLog.i(SCOPE, "screen capture was not allowed")
+        }
+    }
+    val microphone = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { consent.launch(projections.createScreenCaptureIntent()) }
+
+    return { web ->
+        val source = settings.castSource
+        if (source != CastSource.PROJECTION || HeadsetCastService.status.value.running) {
+            launchCast(context, source, web, null)
+        } else {
+            pendingWeb = web
+            val audio = context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+            if (settings.castConfig.sound && !audio) {
+                microphone.launch(Manifest.permission.RECORD_AUDIO)
+            } else {
+                consent.launch(projections.createScreenCaptureIntent())
+            }
+        }
+    }
+}
+
+private fun launchCast(context: Context, source: CastSource, web: Boolean, consent: Pair<Int, Intent>?) {
+    if (!web) HeadsetBridge.send(Envelope(action = Action.CAST_START))
+    HeadsetCastService.start(context, source, phone = !web, web = web, consent = consent)
+}
+
+@Composable
+private fun HeadsetCastSection(settings: BridgeSettings, startCast: (web: Boolean) -> Unit) {
+    val context = LocalContext.current
+    val status by HeadsetCastService.status.collectAsStateWithLifecycle()
+    val revision by settings.revision.collectAsStateWithLifecycle()
+    val source = revision.let { settings.castSource }
+    val config = revision.let { settings.castConfig }
     val host = settings.tcpHost
+    val configure: (CastConfig) -> Unit = {
+        settings.castConfig = it
+        HeadsetCastService.refresh(context)
+    }
 
     SectionCard(
-        title = stringResource(R.string.section_cast),
+        title = stringResource(R.string.section_cast_headset),
         subtitle = stringResource(R.string.section_cast_hint_headset),
     ) {
-        Button(
-            onClick = {
-                if (casting) {
-                    HeadsetCastService.stop(context)
-                    HeadsetBridge.send(Envelope(action = Action.CAST_STOP))
-                } else {
-                    HeadsetBridge.send(Envelope(action = Action.CAST_START))
-                    HeadsetCastService.start(context, settings.castSource)
-                }
-            },
-            enabled = host != null,
-        ) {
-            Text(stringResource(if (casting) R.string.action_stop_cast else R.string.action_start_cast))
-        }
-        Text(
-            stringResource(if (host == null) R.string.cast_needs_wifi else R.string.cast_needs_adb),
-            style = MaterialTheme.typography.bodySmall,
-            color = if (host == null) {
-                MaterialTheme.colorScheme.error
-            } else {
-                MaterialTheme.colorScheme.onSurfaceVariant
+        SegmentedChoice(
+            options = CastSource.entries,
+            selected = source,
+            label = { stringResource(castSourceLabel(it)) },
+            onSelect = {
+                settings.castSource = it
+                HeadsetCastService.refresh(context)
             },
         )
+        Caption(stringResource(castSourceHint(source)))
+
+        Caption(stringResource(R.string.cast_quality))
+        SegmentedChoice(
+            options = CastQuality.entries,
+            selected = config.quality,
+            label = { if (it == CastQuality.EYE) stringResource(R.string.cast_quality_eye) else "${it.height}p" },
+            onSelect = { configure(config.copy(quality = it)) },
+        )
+        Caption(stringResource(R.string.cast_fps))
+        SegmentedChoice(
+            options = CAST_FPS,
+            selected = config.fps,
+            label = { it.toString() },
+            onSelect = { configure(config.copy(fps = it)) },
+        )
+        Caption(stringResource(R.string.cast_bit_rate))
+        SegmentedChoice(
+            options = CAST_BIT_RATES,
+            selected = config.bitRate,
+            label = { if (it == 0) stringResource(R.string.cast_bit_rate_auto) else (it / 1_000_000).toString() },
+            onSelect = { configure(config.copy(bitRate = it)) },
+        )
+        if (source == CastSource.MAGIC || source == CastSource.MAGIC_ADB) {
+            SegmentedChoice(
+                options = listOf(false, true),
+                selected = config.rightEye,
+                label = { stringResource(if (it) R.string.cast_eye_right else R.string.cast_eye_left) },
+                onSelect = { configure(config.copy(rightEye = it)) },
+            )
+            SettingRow(
+                title = stringResource(R.string.setting_cast_stabilized),
+                subtitle = stringResource(R.string.setting_cast_stabilized_hint),
+                checked = config.stabilized,
+            ) { configure(config.copy(stabilized = it)) }
+        }
+        SettingRow(
+            title = stringResource(R.string.setting_cast_sound),
+            checked = config.sound,
+        ) { configure(config.copy(sound = it)) }
+        if (status.running) {
+            Caption(
+                stringResource(
+                    if (status.source == CastSource.PROJECTION || source == CastSource.PROJECTION) {
+                        R.string.cast_settings_next_start
+                    } else {
+                        R.string.cast_settings_live
+                    }
+                )
+            )
+        }
+
+        Button(
+            onClick = {
+                if (status.phone) {
+                    HeadsetCastService.stopPhone(context)
+                    HeadsetBridge.send(Envelope(action = Action.CAST_STOP))
+                } else {
+                    startCast(false)
+                }
+            },
+            enabled = host != null || status.phone,
+        ) {
+            Text(stringResource(if (status.phone) R.string.action_stop_cast else R.string.action_start_cast))
+        }
+        if (host == null) {
+            Text(
+                stringResource(R.string.cast_needs_wifi),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+            )
+        }
+        status.error?.let { reason ->
+            Text(
+                stringResource(if (status.running) R.string.cast_trouble else R.string.cast_failed, reason),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+            )
+        }
 
         var sensorOff by remember { mutableStateOf<Boolean?>(null) }
-        LaunchedEffect(Unit) { sensorOff = withContext(Dispatchers.IO) { HeadsetProximity.state(context) } }
+        val access by HeadsetAdb.access.collectAsStateWithLifecycle()
+        LaunchedEffect(access) {
+            if (access == AdbAccess.READY) sensorOff = withContext(Dispatchers.IO) { HeadsetProximity.query(context) }
+        }
 
         OutlinedButton(onClick = {
             val wanted = sensorOff != true
@@ -821,19 +961,184 @@ private fun HeadsetCastSection(settings: BridgeSettings) {
                 )
             )
         }
-        Text(
+        Caption(
             stringResource(
                 when (sensorOff) {
                     true -> R.string.proximity_off
                     false -> R.string.proximity_on
                     null -> R.string.proximity_unknown
                 }
-            ),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         )
     }
 }
+
+@Composable
+private fun HeadsetWebSection(settings: BridgeSettings, startCast: (web: Boolean) -> Unit) {
+    val context = LocalContext.current
+    val status by HeadsetCastService.status.collectAsStateWithLifecycle()
+    val revision by settings.revision.collectAsStateWithLifecycle()
+    val password = revision.let { settings.webPassword }
+    val control = revision.let { settings.webControl }
+    var port by rememberSaveable { mutableStateOf(settings.webPort.toString()) }
+    val serving = status.webPort
+    val address = remember(serving) { localAddress(context) }
+
+    SectionCard(
+        title = stringResource(R.string.section_cast_web),
+        subtitle = stringResource(R.string.section_cast_web_hint),
+        trailing = {
+            Switch(
+                checked = serving != null,
+                onCheckedChange = { on -> if (on) startCast(true) else HeadsetCastService.stopWeb(context) },
+            )
+        },
+    ) {
+        if (serving != null) {
+            val url = address?.let { "http://$it:$serving" }
+            if (url == null) {
+                Caption(stringResource(R.string.cast_no_address))
+            } else {
+                val code = remember(url) { QrCode.render(url, QR_PX, Color.Black.toArgb(), Color.White.toArgb()) }
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    if (code != null) {
+                        Image(
+                            bitmap = code,
+                            contentDescription = stringResource(R.string.cast_web_qr),
+                            modifier = Modifier
+                                .size(120.dp)
+                                .clip(RoundedCornerShape(12.dp)),
+                        )
+                    }
+                    SelectionContainer {
+                        InfoRow(title = url, detail = stringResource(R.string.cast_web_viewers, status.browsers))
+                    }
+                }
+            }
+        }
+
+        SettingRow(
+            title = stringResource(R.string.setting_cast_password),
+            subtitle = if (password == null) {
+                stringResource(R.string.setting_cast_password_off)
+            } else {
+                stringResource(R.string.cast_password, password)
+            },
+            checked = password != null,
+        ) { on ->
+            settings.webPassword = if (on) WebCastServer.newPassword() else null
+            if (!on) settings.webControl = false
+            HeadsetCastService.refresh(context)
+        }
+        if (password != null) {
+            TextButton(onClick = {
+                settings.webPassword = WebCastServer.newPassword()
+                HeadsetCastService.refresh(context)
+            }) {
+                Text(stringResource(R.string.action_new_password))
+            }
+        }
+        SettingRow(
+            title = stringResource(R.string.setting_web_control),
+            subtitle = stringResource(R.string.setting_web_control_hint),
+            checked = control,
+        ) { on ->
+            if (on && settings.webPassword == null) settings.webPassword = WebCastServer.newPassword()
+            settings.webControl = on
+            HeadsetCastService.refresh(context)
+        }
+        SettingRow(
+            title = stringResource(R.string.setting_web_autostart),
+            subtitle = stringResource(R.string.setting_web_autostart_hint),
+            checked = revision.let { settings.webAutoStart },
+        ) { settings.webAutoStart = it }
+        OutlinedTextField(
+            value = port,
+            onValueChange = { text ->
+                port = text.filter(Char::isDigit).take(5)
+                port.toIntOrNull()?.takeIf { it in WEB_PORTS }?.let {
+                    settings.webPort = it
+                    HeadsetCastService.refresh(context)
+                }
+            },
+            label = { Text(stringResource(R.string.cast_web_port)) },
+            singleLine = true,
+            isError = port.toIntOrNull() !in WEB_PORTS,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            shape = RoundedCornerShape(14.dp),
+        )
+        if (serving == null) {
+            status.error?.let { reason ->
+                Text(
+                    stringResource(R.string.cast_failed, reason),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AdbSection() {
+    val context = LocalContext.current
+    val access by HeadsetAdb.access.collectAsStateWithLifecycle()
+    val checking by HeadsetAdb.checking.collectAsStateWithLifecycle()
+    val dormant = access == AdbAccess.OFFLINE && AdbConnection.canEnableWireless(context)
+    LaunchedEffect(Unit) { if (access == null) HeadsetAdb.check(context, wake = false) }
+
+    SectionCard(
+        title = stringResource(R.string.section_adb),
+        subtitle = stringResource(R.string.section_adb_hint),
+    ) {
+        Text(
+            stringResource(
+                when {
+                    checking -> R.string.adb_checking
+                    access == AdbAccess.READY && AdbConnection.canEnableWireless(context) -> R.string.adb_ready_kept
+                    access == AdbAccess.READY -> R.string.adb_ready
+                    access == AdbAccess.UNAUTHORIZED -> R.string.adb_unauthorized
+                    dormant -> R.string.adb_dormant
+                    access == AdbAccess.OFFLINE -> R.string.adb_offline
+                    else -> R.string.adb_unknown
+                }
+            ),
+            style = MaterialTheme.typography.bodyLarge,
+            color = if (access == AdbAccess.READY && !checking) {
+                LocalStatusColors.current.positive
+            } else {
+                MaterialTheme.colorScheme.onSurface
+            },
+        )
+        if (!checking) {
+            when {
+                dormant -> Caption(stringResource(R.string.adb_dormant_hint))
+                access == AdbAccess.OFFLINE -> Caption(stringResource(R.string.adb_steps))
+                access == AdbAccess.UNAUTHORIZED -> Caption(stringResource(R.string.adb_step_allow))
+            }
+        }
+        OutlinedButton(onClick = { HeadsetAdb.check(context) }, enabled = !checking) {
+            Text(stringResource(R.string.action_check_adb))
+        }
+    }
+}
+
+@Composable
+private fun Caption(text: String) {
+    Text(
+        text,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}
+
+private val CAST_FPS = listOf(30, 60)
+private val CAST_BIT_RATES = listOf(0, 4_000_000, 8_000_000, 12_000_000, 20_000_000)
+private val WEB_PORTS = 1024..65535
+private const val QR_PX = 480
 
 private const val PREVIEW_ASPECT = 0.46f
 private const val SCOPE = "ui"

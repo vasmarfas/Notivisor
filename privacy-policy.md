@@ -1,6 +1,6 @@
 # Privacy Policy
 
-**Effective Date:** 2026-08-10
+**Effective Date:** 2026-11-11
 
 **Notivisor** ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy
 explains how we collect, use, and safeguard your information when you use our Android application (
@@ -21,6 +21,22 @@ nothing to forward.
   under a key derived from the 16-digit pairing code shown on your phone, so a device within range
   cannot read the traffic without that code.
 
+### Headset view
+
+When you start casting on the headset, the App captures the headset's picture and, if you leave
+sound on, the audio of the apps playing on it. It goes either to your paired phone over your Wi-Fi
+network, or, if you turn on the browser view, to web browsers on the same local network that open
+the address shown on the headset. The video stream is not encrypted in either case; for the browser
+view an optional password limits who can open it. Nothing is recorded or stored, and the capture
+stops when you stop casting or when nobody has watched for 15 seconds.
+
+The same page can also manage the headset: install and remove apps, browse and transfer files, run
+shell commands, take a screenshot. This is off until you turn it on in the App, it only works
+together with the password, and it only answers browsers on your local network. Whoever knows the
+password gets the rights of the headset's adb shell, and the password travels over plain HTTP, so
+turn management on only in a network you trust. Files and commands go between that browser and the
+headset; nothing is sent to us or to any server.
+
 ### App settings
 
 Your configuration — which apps are mirrored, the connection type, and the pairing code — is stored
@@ -38,7 +54,9 @@ it's stored on.
 
 The App does not use Firebase, Google Analytics, Crashlytics, advertising SDKs, or any other
 third-party analytics or tracking service. It makes no network requests beyond the direct connection
-to your own paired device. Nothing about your usage of the App is reported to us or to anyone else.
+to your own paired device; the browser view described above only answers browsers on your local
+network and never contacts anything itself. Nothing about your usage of the App is reported to us or
+to anyone else.
 
 The source code of the App is available for review on GitHub, under a noncommercial license.
 
@@ -51,7 +69,15 @@ The App requests the following permissions and uses them only for the stated pur
 - **Bluetooth** (`BLUETOOTH_SCAN`, `BLUETOOTH_CONNECT`, `BLUETOOTH_ADVERTISE`) — to discover and
   connect to your paired device.
 - **Local network** (`ACCESS_LOCAL_NETWORK`, Android 17 and later) — to connect to your paired
-  device over Wi-Fi, find it on the network, and stream the screen between the two devices.
+  device over Wi-Fi, find it on the network, stream the screen between the two devices, and serve
+  the headset view to browsers on the same network when you turn that on.
+- **Screen capture and record audio** (`FOREGROUND_SERVICE_MEDIA_PROJECTION`, `RECORD_AUDIO`) —
+  only for the screen capture casting mode, and only after you confirm the system's capture prompt.
+  The audio permission is used for the sound of apps playing on the device, never the microphone.
+- **Secure settings** (`WRITE_SECURE_SETTINGS`) — never granted by the system on its own. The App
+  takes it only after you have authorised its debugging connection to the device it runs on, and
+  uses it for one thing: switching wireless debugging back on after a reboot, when a feature that
+  needs that connection is used. It changes no other setting.
 - **Camera** (headset installation only) — to scan the pairing QR code shown on your phone. No image
   is stored or transmitted; it is decoded on device and discarded immediately.
 - **Post notifications** — to display forwarded notifications on the headset and to show the App's

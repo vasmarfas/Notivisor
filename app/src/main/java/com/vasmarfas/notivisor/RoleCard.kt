@@ -30,7 +30,7 @@ fun RoleCard() {
     SectionCard(
         title = stringResource(R.string.section_role),
         subtitle = if (override == null) {
-            stringResource(R.string.role_auto, detected.second)
+            stringResource(R.string.role_auto)
         } else {
             stringResource(R.string.role_manual)
         },

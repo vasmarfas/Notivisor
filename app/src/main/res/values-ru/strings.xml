@@ -95,7 +95,7 @@
     <string name="test_text">Если вы читаете это в шлеме, соединение работает.</string>
 
     <string name="section_role">Это устройство</string>
-    <string name="role_auto">Определено автоматически: %1$s</string>
+    <string name="role_auto">Определено автоматически</string>
     <string name="role_manual">Выбрано вручную</string>
     <string name="role_phone">Телефон</string>
     <string name="role_headset">Шлем</string>
@@ -191,22 +191,24 @@
     <string name="overlay_missing">Разрешение рисовать поверх приложений ещё не выдано</string>
 
     <string name="channel_cast">Вид из шлема</string>
-    <string name="cast_notification_text">Шлем транслируется на телефон</string>
+    <string name="cast_notification_text">Шлем транслируется по Wi-Fi</string>
     <string name="section_cast">Вид из шлема на телефоне</string>
     <string name="section_cast_hint_phone">Посмотреть и послушать, что происходит в шлеме; нужен общий Wi-Fi</string>
-    <string name="section_cast_hint_headset">Отдаёт картинку и звук шлема на телефон по Wi-Fi</string>
+    <string name="section_cast_hint_headset">Отдаёт картинку и звук шлема на телефон или в браузер по Wi-Fi</string>
     <string name="cast_idle">Трансляция не идёт</string>
     <string name="cast_waiting">Ждём шлем…</string>
     <string name="cast_needs_wifi">Сначала переключитесь на Wi-Fi и укажите адрес телефона</string>
-    <string name="cast_needs_adb">Нужна беспроводная отладка, сопряжённая на шлеме</string>
-    <string name="action_start_cast">Транслировать шлем</string>
-    <string name="action_stop_cast">Остановить трансляцию</string>
+    <string name="action_start_cast">Транслировать на телефон</string>
+    <string name="action_stop_cast">Остановить трансляцию на телефон</string>
     <string name="action_watch_headset">Смотреть шлем</string>
-    <string name="cast_source_magic">Кастинг Quest</string>
+    <string name="cast_source_magic">Quest</string>
+    <string name="cast_source_magic_adb">Quest + adb</string>
     <string name="cast_source_scrcpy">scrcpy</string>
-    <string name="cast_source_magic_hint">Только Quest — собственный кастинг Horizon OS, тот же, что у программ для ПК. Работает и со снятым шлемом. На Pico такой службы нет, там только scrcpy.</string>
-    <string name="cast_source_scrcpy_hint">Работает на любом шлеме. Зеркалит дисплей, поэтому датчик приближения должен считать шлем надетым.</string>
-    <string name="cast_error_no_adb">На шлеме не сопряжена беспроводная отладка</string>
+    <string name="cast_source_projection">Запись</string>
+    <string name="cast_source_magic_hint">Только Quest. Собственный кастинг Horizon OS, запускается без adb и ПК. Работает и со снятым шлемом.</string>
+    <string name="cast_source_magic_adb_hint">Только Quest. Тот же кастинг, но поднимается через adb самого шлема, как это делают программы для ПК. Нужен, если обычный режим перестал подключаться после обновления прошивки.</string>
+    <string name="cast_source_scrcpy_hint">Любой шлем, на котором настроен adb. Зеркалит дисплей, поэтому датчик приближения должен считать шлем надетым.</string>
+    <string name="cast_source_projection_hint">Без adb. Системная запись экрана Android, разрешение спрашивается при каждом запуске. Основной режим для Pico; на Quest видит только плоские окна.</string>
     <string name="cast_error_no_picture">Шлем запустился, но картинку не прислал</string>
     <string name="cast_failed">Трансляция остановлена: %1$s</string>
     <string name="action_disable_proximity">Отключить датчик</string>

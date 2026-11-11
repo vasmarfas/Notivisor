@@ -1,8 +1,11 @@
 package com.vasmarfas.notivisor.core.control
 
+import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
 import com.vasmarfas.notivisor.core.adb.AdbConnection
 import com.vasmarfas.notivisor.core.adb.AdbIdentity
+import com.vasmarfas.notivisor.core.transport.TransportConfig
 import com.vasmarfas.notivisor.core.util.BridgeLog
 import dadb.Dadb
 import java.io.InputStream
@@ -19,6 +22,11 @@ import java.util.concurrent.TimeUnit
 object MagicCastSession {
 
     private var dadb: Dadb? = null
+
+    @Volatile
+    private var direct = false
+
+    @Volatile
     private var server: ServerSocket? = null
     private val sockets = mutableListOf<Socket>()
     private var accepting: Thread? = null
@@ -32,52 +40,56 @@ object MagicCastSession {
     @Volatile
     private var announced: CapturePacket.Size? = null
 
+    @Volatile
+    private var config = CastConfig()
+
     private val ready = LinkedBlockingQueue<CapturePacket>()
     private val sendLock = Any()
     private var appId = 0
     private var datagramId = 1
     private var topic = 0
 
-    fun isAvailable(context: Context): Boolean = AdbConnection.resolvePort(context) != null
-
     @Synchronized
-    fun start(context: Context): Boolean = runCatching {
-        close()
-        val port = AdbConnection.resolvePort(context) ?: run {
-            BridgeLog.w(SCOPE, "no reachable adb port; wireless debugging off or unpaired")
-            return false
-        }
-        val connection = Dadb.create(LOOPBACK, port, AdbIdentity.keyPair(context))
-        dadb = connection
-
-        val listener = ServerSocket(XRSP_PORT, BACKLOG, InetAddress.getByName(LOOPBACK))
-        listener.soTimeout = ACCEPT_TIMEOUT_MS
+    fun start(context: Context, config: CastConfig, viaAdb: Boolean): Boolean = runCatching {
+        release(context)
+        this.config = config
+        val listener = ServerSocket(TransportConfig.MAGIC_CAST_PORT, BACKLOG, InetAddress.getByName(LOOPBACK))
+        listener.soTimeout = if (viaAdb) ACCEPT_TIMEOUT_MS else DIRECT_ACCEPT_TIMEOUT_MS
         server = listener
 
-        bringUp(connection, connection.exec("getprop ro.serialno").trim())
-        val first = accept(listener) ?: run {
-            BridgeLog.w(SCOPE, "casting service never called back, retrying the bring-up")
-            recover(connection)
-            accept(listener) ?: error("casting service did not connect")
+        val first = if (viaAdb) connectViaAdb(context, listener) else connectDirectly(context, listener)
+        if (first == null) {
+            release(context)
+            return false
         }
 
         running = true
         output = first.getOutputStream()
         reader(first, "conn1", owns = true)
         accepting = Thread { acceptLoop(listener) }.apply { isDaemon = true; start() }
-        BridgeLog.i(SCOPE, "casting service connected")
+        BridgeLog.i(SCOPE, "casting service connected ${if (viaAdb) "via adb" else "directly"}")
         true
     }.getOrElse {
         BridgeLog.w(SCOPE, "session failed: ${it.message}")
-        close()
+        release(context)
         false
     }
 
     fun readPacket(): CapturePacket? =
         if (!running) null else ready.poll(READ_TIMEOUT_MS.toLong(), TimeUnit.MILLISECONDS)
 
+    fun requestKeyframe() {
+        if (running) send(message(TYPE_RESYNC_FRAME, 0))
+    }
+
+    fun close(context: Context) {
+        runCatching { server?.close() }
+        release(context)
+    }
+
     @Synchronized
-    fun close() {
+    private fun release(context: Context) {
+        if (running) send(ByteBuffer.allocate(4).putInt(TYPE_STOP_CASTING).array())
         running = false
         output = null
         announced = null
@@ -96,8 +108,61 @@ object MagicCastSession {
             runCatching { tearDown(connection) }
             runCatching { connection.close() }
         }
+        if (direct) runCatching { context.stopService(Intent().setComponent(SERVICE)) }
         server = null
         dadb = null
+        direct = false
+    }
+
+    private fun connectViaAdb(context: Context, listener: ServerSocket): Socket? {
+        val port = AdbConnection.resolvePort(context) ?: run {
+            BridgeLog.w(SCOPE, "no reachable adb port; wireless debugging off or unpaired")
+            return null
+        }
+        val connection = Dadb.create(LOOPBACK, port, AdbIdentity.keyPair(context))
+        dadb = connection
+        AdbConnection.keep(context, connection)
+
+        bringUp(connection, connection.exec("getprop ro.serialno").trim())
+        return accept(listener) ?: run {
+            BridgeLog.w(SCOPE, "casting service never called back, retrying the bring-up")
+            recover(connection)
+            accept(listener)
+        }
+    }
+
+    private fun connectDirectly(context: Context, listener: ServerSocket): Socket? {
+        val installed = runCatching { context.packageManager.getPackageInfo(CASTING_SERVICE, 0) }.isSuccess
+        if (!installed) {
+            BridgeLog.w(SCOPE, "$CASTING_SERVICE is not installed")
+            return null
+        }
+        direct = true
+        repeat(DIRECT_ATTEMPTS) { attempt ->
+            if (attempt > 0) {
+                BridgeLog.w(SCOPE, "casting service never called back, restarting it")
+                context.stopService(Intent().setComponent(SERVICE))
+                Thread.sleep(SETTLE_MS)
+            }
+            val started = context.startForegroundService(
+                Intent("$CASTING_SERVICE.START_SERVICE")
+                    .setComponent(SERVICE)
+                    .putExtra("id", context.packageName)
+            )
+            if (started == null) {
+                BridgeLog.w(SCOPE, "the casting service refused to start")
+                return null
+            }
+            Thread.sleep(INIT_MS)
+            context.sendBroadcast(
+                Intent("$CASTING_SERVICE.CONNECT")
+                    .setPackage(CASTING_SERVICE)
+                    .putExtra("servers", arrayOf("$LOOPBACK:${listener.localPort}"))
+                    .putExtra("session_uuid", UUID.randomUUID().toString())
+            )
+            accept(listener)?.let { return it }
+        }
+        return null
     }
 
     private fun accept(listener: ServerSocket): Socket? =
@@ -128,7 +193,7 @@ object MagicCastSession {
     }
 
     private fun bringUp(connection: Dadb, serial: String) {
-        BridgeLog.i(SCOPE, "bringing casting up on port $XRSP_PORT at $FPS fps")
+        BridgeLog.i(SCOPE, "bringing casting up on port ${TransportConfig.MAGIC_CAST_PORT} at ${config.fps} fps")
 
         connection.exec("am force-stop $CASTING_SERVICE")
         connection.exec("am force-stop com.oculus.metacam")
@@ -141,9 +206,9 @@ object MagicCastSession {
         connection.exec("setprop debug.oculus.command_line_media_capture true")
         connection.exec("setprop debug.oculus.magic.enabled 1")
         connection.exec("setprop debug.oculus.magic.serialNumber $serial")
-        connection.exec("setprop debug.oculus.magic.maxFps $FPS")
-        connection.exec("setprop debug.oculus.magic.minFps $FPS")
-        connection.exec("setprop debug.oculus.magic.port $XRSP_PORT")
+        connection.exec("setprop debug.oculus.magic.maxFps ${config.fps}")
+        connection.exec("setprop debug.oculus.magic.minFps ${config.fps}")
+        connection.exec("setprop debug.oculus.magic.port ${TransportConfig.MAGIC_CAST_PORT}")
         connection.exec("am start-foreground-service -n $CASTING_SERVICE/.CastingService --ez use_openxr true")
         Thread.sleep(INIT_MS)
         val session = UUID.randomUUID().toString()
@@ -232,7 +297,12 @@ object MagicCastSession {
     private fun handle(body: ByteArray) {
         when (body.int(0) ?: return) {
             MESSAGE_HANDSHAKE -> {
-                BridgeLog.i(SCOPE, "handshake, asking for ${WIDTH}x$HEIGHT")
+                val quality = config.quality
+                BridgeLog.i(SCOPE, "handshake, asking for ${quality.width}x${quality.height} at ${config.fps} fps")
+                send(message(TYPE_SET_AUDIO_STATE, if (config.sound) 1 else 0))
+                send(property(PROPERTY_BIT_RATE, if (config.bitRate > 0) config.bitRate.toString() else ""))
+                send(property(PROPERTY_MAX_WIDTH, quality.width.toString()))
+                send(property(PROPERTY_MAX_HEIGHT, quality.height.toString()))
                 send(eyeFovConfig())
                 send(startCasting())
             }
@@ -250,6 +320,10 @@ object MagicCastSession {
 
             MESSAGE_VIDEO_SEGMENT -> if (body.size > VIDEO_HEADER) {
                 queueVideo(body.copyOfRange(VIDEO_HEADER, body.size))
+            }
+
+            MESSAGE_AUDIO_SEGMENT -> if (announced != null && body.size > AUDIO_HEADER) {
+                ready += CapturePacket.Sound(littleEndian(body, AUDIO_HEADER))
             }
         }
     }
@@ -275,6 +349,15 @@ object MagicCastSession {
         }
     }
 
+    private fun littleEndian(body: ByteArray, from: Int): ByteArray {
+        val pcm = ByteArray((body.size - from) and 1.inv())
+        for (index in pcm.indices step 2) {
+            pcm[index] = body[from + index + 1]
+            pcm[index + 1] = body[from + index]
+        }
+        return pcm
+    }
+
     private fun readFrame(stream: InputStream): ByteArray? {
         val header = ByteArray(8)
         if (!readFully(stream, header)) return null
@@ -282,7 +365,10 @@ object MagicCastSession {
         val total = ((words.toInt() and 0xFFFF) + 1) * 4
         if (total < 8) throw IllegalStateException("bad XRSP length $total")
         val payload = ByteArray(total - 8)
-        return payload.takeIf { readFully(stream, it) }
+        if (!readFully(stream, payload)) return null
+        if (header[0].toInt() and FLAG_PADDED == 0 || payload.isEmpty()) return payload
+        val padding = payload.last().toInt() and 0xFF
+        return if (padding in 1..payload.size) payload.copyOf(payload.size - padding) else payload
     }
 
     private fun appHeader(payload: ByteArray): AppHeader? {
@@ -343,15 +429,37 @@ object MagicCastSession {
         .putInt(0).putInt(0).putInt(0).putInt(0)
         .array()
 
-    private fun startCasting(): ByteArray = ByteBuffer.allocate(28)
-        .putInt(TYPE_START_CASTING)
-        .putInt(WIDTH)
-        .putInt(HEIGHT)
-        .putFloat(0f)
-        .putInt(EYE)
-        .putInt(FPS)
-        .putInt(0)
-        .array()
+    private fun startCasting(): ByteArray {
+        val session = if (direct) string(UUID.randomUUID().toString()) else ByteArray(0)
+        return ByteBuffer.allocate(28 + session.size)
+            .putInt(TYPE_START_CASTING)
+            .putInt(config.quality.width)
+            .putInt(config.quality.height)
+            .putFloat(0f)
+            .putInt(if (config.rightEye) 1 else 0)
+            .putInt(config.fps)
+            .putInt(if (config.stabilized) 1 else 0)
+            .put(session)
+            .array()
+    }
+
+    private fun property(key: String, value: String): ByteArray {
+        val name = string(key)
+        val content = string(value)
+        return ByteBuffer.allocate(4 + name.size + content.size)
+            .putInt(TYPE_SET_PROPERTY)
+            .put(name)
+            .put(content)
+            .array()
+    }
+
+    private fun string(value: String): ByteArray {
+        val bytes = value.toByteArray(Charsets.UTF_8)
+        return ByteBuffer.allocate(4 + ((bytes.size + 3) and 3.inv()))
+            .putInt(bytes.size)
+            .put(bytes)
+            .array()
+    }
 
     private fun message(type: Int, value: Int): ByteArray =
         ByteBuffer.allocate(8).putInt(type).putInt(value).array()
@@ -397,37 +505,44 @@ object MagicCastSession {
 
     private const val SCOPE = "magiccast"
     private const val LOOPBACK = "127.0.0.1"
-    private const val XRSP_PORT = 47832
     private const val BACKLOG = 4
     private const val ACCEPT_TIMEOUT_MS = 12_000
+    private const val DIRECT_ACCEPT_TIMEOUT_MS = 5_000
+    private const val DIRECT_ATTEMPTS = 2
     private const val READ_TIMEOUT_MS = 8_000
     private const val SETTLE_MS = 500L
     private const val INIT_MS = 1_000L
 
-    private const val WIDTH = 1344
-    private const val HEIGHT = 1440
-    private const val FPS = 30
-    private const val EYE = 1
-
     private const val METACAM = "com.oculus.metacam/com.oculus.metacam.casting.CastingService"
     private const val CASTING_SERVICE = "com.oculus.magicislandcastingservice"
+    private val SERVICE = ComponentName(CASTING_SERVICE, "$CASTING_SERVICE.CastingService")
+
+    private const val PROPERTY_BIT_RATE = "debug.oculus.magic.bitrate"
+    private const val PROPERTY_MAX_WIDTH = "debug.oculus.magic.maxWidth"
+    private const val PROPERTY_MAX_HEIGHT = "debug.oculus.magic.maxHeight"
 
     private const val APP_HEADER = 24
     private const val VIDEO_HEADER = 16
+    private const val AUDIO_HEADER = 16
     private const val DATAGRAM_LIMIT = 1_000_000
     private const val MAX_GROUP = 1_024
     private const val WORD0: Short = 0x0210
+    private const val FLAG_PADDED = 0x08
 
     private const val MESSAGE_HANDSHAKE = 1
     private const val MESSAGE_PING = 3
     private const val MESSAGE_VIDEO_SEGMENT = 100
+    private const val MESSAGE_AUDIO_SEGMENT = 102
     private const val MESSAGE_LAYER_CONFIGURATION = 300
 
     private const val TYPE_PONG = 4
     private const val TYPE_START_CASTING = 7
+    private const val TYPE_STOP_CASTING = 8
+    private const val TYPE_SET_PROPERTY = 10
     private const val TYPE_RESYNC_FRAME = 101
     private const val TYPE_INPUT_FORWARDING = 205
     private const val TYPE_ACTIVATE_LAYER = 301
+    private const val TYPE_SET_AUDIO_STATE = 503
     private const val TYPE_EYE_FOV_CONFIG = 600
 
     private val GROUP_MARKER = "MGIK".toByteArray(Charsets.US_ASCII)

@@ -34,23 +34,27 @@ object AudioSession {
         val connection = Dadb.create("127.0.0.1", port, AdbIdentity.keyPair(context))
         dadb = connection
 
-        val scid = ScrcpyServer.scid()
-        shell = ScrcpyServer.launch(context, connection, version, scid, OPTIONS)
-        val socket = ScrcpyServer.open(connection, scid) ?: return false
-        stream = socket
-
-        val source = socket.source.inputStream()
-        readFully(source, ByteArray(DEVICE_META))
-        val header = ByteArray(4).also { readFully(source, it) }
-        val codec = ByteBuffer.wrap(header).order(ByteOrder.BIG_ENDIAN).int
-        if (codec != CODEC_RAW) {
+        for (options in listOf(OPTIONS, "$OPTIONS $PLAYBACK")) {
+            val scid = ScrcpyServer.scid()
+            val launched = ScrcpyServer.launch(context, connection, version, scid, options)
+            val socket = ScrcpyServer.open(connection, scid) ?: return false
+            val source = socket.source.inputStream()
+            readFully(source, ByteArray(DEVICE_META))
+            val header = ByteArray(4).also { readFully(source, it) }
+            val codec = ByteBuffer.wrap(header).order(ByteOrder.BIG_ENDIAN).int
+            if (codec == CODEC_RAW) {
+                shell = launched
+                stream = socket
+                input = source
+                BridgeLog.i(SCOPE, "capturing $SAMPLE_RATE Hz stereo")
+                return true
+            }
             BridgeLog.w(SCOPE, "the device refused to capture audio, codec id 0x${codec.toString(16)}")
-            close()
-            return false
+            runCatching { socket.close() }
+            runCatching { launched.close() }
         }
-        input = source
-        BridgeLog.i(SCOPE, "capturing $SAMPLE_RATE Hz stereo")
-        true
+        close()
+        false
     }.getOrElse {
         BridgeLog.w(SCOPE, "audio session failed: ${it.message}")
         close()
@@ -94,6 +98,7 @@ object AudioSession {
 
     private const val SCOPE = "castaudio"
     private const val OPTIONS = "video=false audio=true audio_codec=raw control=false"
+    private const val PLAYBACK = "audio_source=playback audio_dup=true"
     private const val DEVICE_META = 64
     private const val PACKET_HEADER = 12
     private const val MAX_CHUNK_BYTES = 1 shl 16

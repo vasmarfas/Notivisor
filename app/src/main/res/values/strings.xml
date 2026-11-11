@@ -97,7 +97,7 @@
     <string name="test_text">If you can read this in the headset, the connection works.</string>
 
     <string name="section_role">This device</string>
-    <string name="role_auto">Detected automatically: %1$s</string>
+    <string name="role_auto">Detected automatically</string>
     <string name="role_manual">Set by hand</string>
     <string name="role_phone">Phone</string>
     <string name="role_headset">Headset</string>
@@ -193,22 +193,24 @@
     <string name="overlay_missing">Permission to draw over apps is not granted yet</string>
 
     <string name="channel_cast">Headset view</string>
-    <string name="cast_notification_text">Streaming this headset to the phone</string>
+    <string name="cast_notification_text">Streaming this headset over Wi-Fi</string>
     <string name="section_cast">Headset view on this phone</string>
     <string name="section_cast_hint_phone">Watch and hear what the headset does; needs the same Wi-Fi</string>
-    <string name="section_cast_hint_headset">Sends this headset\'s view and sound to the phone over Wi-Fi</string>
+    <string name="section_cast_hint_headset">Sends this headset\'s view and sound to the phone or to a browser over Wi-Fi</string>
     <string name="cast_idle">Not casting</string>
     <string name="cast_waiting">Waiting for the headset…</string>
     <string name="cast_needs_wifi">Switch to Wi-Fi and pair the phone\'s address first</string>
-    <string name="cast_needs_adb">Needs wireless debugging paired on the headset</string>
-    <string name="action_start_cast">Cast the headset</string>
-    <string name="action_stop_cast">Stop casting</string>
+    <string name="action_start_cast">Cast to the phone</string>
+    <string name="action_stop_cast">Stop casting to the phone</string>
     <string name="action_watch_headset">Watch the headset</string>
-    <string name="cast_source_magic">Quest casting</string>
+    <string name="cast_source_magic">Quest</string>
+    <string name="cast_source_magic_adb">Quest + adb</string>
     <string name="cast_source_scrcpy">scrcpy</string>
-    <string name="cast_source_magic_hint">Quest only — Horizon OS\'s own casting, the same one the desktop tools drive. Keeps going with the headset off. Pico has no such service, so use scrcpy there.</string>
-    <string name="cast_source_scrcpy_hint">Works on any headset. Mirrors the display, so the proximity sensor has to think the headset is worn.</string>
-    <string name="cast_error_no_adb">Wireless debugging is not paired on the headset</string>
+    <string name="cast_source_projection">Capture</string>
+    <string name="cast_source_magic_hint">Quest only. Horizon OS\'s own casting, started without adb or a PC. Keeps going with the headset off.</string>
+    <string name="cast_source_magic_adb_hint">Quest only. The same casting, brought up through the headset\'s own adb the way the desktop tools do it. Use it if the plain mode stops connecting after a firmware update.</string>
+    <string name="cast_source_scrcpy_hint">Works on any headset with adb set up on it. Mirrors the display, so the proximity sensor has to think the headset is worn.</string>
+    <string name="cast_source_projection_hint">No adb. Android screen capture, asks for consent on every start. The main mode for Pico; on Quest it only sees flat windows.</string>
     <string name="cast_error_no_picture">The headset started but sent no picture</string>
     <string name="cast_failed">Casting stopped: %1$s</string>
     <string name="action_disable_proximity">Switch sensor off</string>

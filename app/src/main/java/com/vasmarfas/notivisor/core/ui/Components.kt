@@ -6,6 +6,8 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.FlowRowScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -213,6 +215,16 @@ fun SettingRow(
         }
         Switch(checked = checked, onCheckedChange = onCheckedChange, enabled = enabled)
     }
+}
+
+@Composable
+fun ButtonRow(modifier: Modifier = Modifier, content: @Composable FlowRowScope.() -> Unit) {
+    FlowRow(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+        content = content,
+    )
 }
 
 @Composable

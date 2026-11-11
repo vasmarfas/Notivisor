@@ -61,4 +61,55 @@
     <string name="copy_failed">Не удалось записать в буфер обмена</string>
 
     <string name="quit_message_headset">Соединение закроется, уведомления перестанут приходить до следующего запуска приложения.</string>
+
+    <string name="section_cast_headset">Трансляция шлема</string>
+    <string name="cast_quality">Разрешение</string>
+    <string name="cast_quality_eye">Глаз</string>
+    <string name="cast_fps">Кадров в секунду</string>
+    <string name="cast_bit_rate">Битрейт, Мбит/с</string>
+    <string name="cast_bit_rate_auto">Авто</string>
+    <string name="cast_eye_left">Левый глаз</string>
+    <string name="cast_eye_right">Правый глаз</string>
+    <string name="setting_cast_stabilized">Стабилизация картинки</string>
+    <string name="setting_cast_stabilized_hint">Сглаживает мелкие повороты головы для зрителей</string>
+    <string name="setting_cast_sound">Звук</string>
+    <string name="cast_settings_next_start">В режиме записи новые настройки применятся после остановки трансляции</string>
+    <string name="cast_settings_live">Настройки применяются сразу, картинка вернётся через пару секунд</string>
+    <string name="cast_error_no_service">Служба кастинга Quest не ответила</string>
+    <string name="cast_error_no_scrcpy">scrcpy не запустился на шлеме</string>
+    <string name="cast_error_no_projection">Запись экрана не разрешена</string>
+    <string name="cast_error_stalled">Шлем перестал присылать картинку</string>
+    <string name="cast_error_adb_offline">adb шлема не слушает сеть. Подключите шлем к компьютеру и выполните adb tcpip 5555</string>
+    <string name="cast_error_adb_unauthorized">Шлем ждёт разрешения: наденьте его и в окне «Разрешить отладку по USB?» выберите «Всегда разрешать»</string>
+    <string name="cast_trouble">Картинки нет: %1$s. Пробуем снова, страницу перезагружать не нужно.</string>
+
+    <string name="section_adb">adb шлема</string>
+    <string name="section_adb_hint">Нужен режимам «Quest + adb» и scrcpy, кнопке датчика приближения, вставке текста и управлению из браузера</string>
+    <string name="adb_ready">Готов</string>
+    <string name="adb_ready_kept">Готов. После перезагрузки шлема приложение включит отладку само</string>
+    <string name="adb_offline">Не настроен</string>
+    <string name="adb_dormant">Выключен, включится сам</string>
+    <string name="adb_dormant_hint">После перезагрузки шлема adb выключен. Приложение включит его при первом обращении или по кнопке «Проверить». Если шлем спросит про беспроводную отладку в этой сети, выберите «Всегда разрешать для этой сети».</string>
+    <string name="adb_unauthorized">Ждёт разрешения в шлеме</string>
+    <string name="adb_checking">Проверяем…</string>
+    <string name="adb_unknown">Ещё не проверялся</string>
+    <string name="adb_steps">1. Подключите шлем к компьютеру кабелем и выполните: adb tcpip 5555\n2. Нажмите «Проверить» и в шлеме выберите «Всегда разрешать для этого компьютера».\n\nКомпьютер нужен один раз. Дальше приложение само включает беспроводную отладку после перезагрузки, а в новой сети Wi-Fi шлем один раз спросит разрешение.</string>
+    <string name="adb_step_allow">Наденьте шлем и в окне «Разрешить отладку по USB?» выберите «Всегда разрешать для этого компьютера», затем нажмите «Проверить».</string>
+    <string name="action_check_adb">Проверить</string>
+
+    <string name="section_cast_web">Шлем в браузере</string>
+    <string name="section_cast_web_hint">Адрес открывается в браузере любого телефона, ПК или телевизора в той же сети Wi-Fi, приложение не нужно</string>
+    <string name="cast_web_viewers">Сейчас смотрят: %1$d</string>
+    <string name="cast_web_qr">QR-код с адресом страницы</string>
+    <string name="cast_no_address">У шлема нет адреса в Wi-Fi</string>
+    <string name="setting_cast_password">Спрашивать пароль</string>
+    <string name="setting_cast_password_off">Смотреть может любой в этой сети Wi-Fi</string>
+    <string name="cast_password">Пароль %1$s, имя пользователя любое</string>
+    <string name="action_new_password">Новый пароль</string>
+    <string name="setting_web_control">Управление из браузера</string>
+    <string name="setting_web_control_hint">Установка APK, файлы, консоль adb и настройки трансляции прямо на странице. Работает только с паролем</string>
+    <string name="setting_web_autostart">Включать вместе с приложением</string>
+    <string name="setting_web_autostart_hint">Страница доступна всегда. Захват начинается, когда её кто-то открыл, и гаснет, когда все ушли</string>
+    <string name="cast_web_port">Порт</string>
+    <string name="cast_web_port_busy">порт %1$d занят другим приложением</string>
 </resources>

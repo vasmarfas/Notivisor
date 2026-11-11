@@ -4,6 +4,8 @@ object H264 {
 
     const val NAL_SPS = 7
     private const val NAL_PPS = 8
+    private const val NAL_SLICE = 1
+    private const val NAL_IDR = 5
 
     fun configPrefixLength(data: ByteArray): Int {
         var prefix = 0
@@ -16,6 +18,18 @@ object H264 {
             prefix = index
         }
         return prefix
+    }
+
+    fun isKeyFrame(data: ByteArray): Boolean {
+        var index = nextStartCode(data, 0) ?: return false
+        while (true) {
+            val start = index + (startCodeLength(data, index) ?: return false)
+            when (data.getOrNull(start)?.let { it.toInt() and 0x1F } ?: return false) {
+                NAL_IDR -> return true
+                NAL_SLICE -> return false
+            }
+            index = nextStartCode(data, start) ?: return false
+        }
     }
 
     fun dimensions(config: ByteArray): Pair<Int, Int>? {

@@ -11,8 +11,8 @@ android {
         applicationId = "com.vasmarfas.notivisor"
         minSdk = 26
         targetSdk = 37
-        versionCode = 10
-        versionName = "1.4.0"
+        versionCode = 11
+        versionName = "1.5.0"
     }
 
     buildTypes {
@@ -35,6 +35,10 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    testOptions {
+        unitTests.isReturnDefaultValues = true
     }
 
     lint {

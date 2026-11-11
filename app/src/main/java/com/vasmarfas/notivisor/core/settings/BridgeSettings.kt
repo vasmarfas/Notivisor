@@ -3,6 +3,8 @@ package com.vasmarfas.notivisor.core.settings
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
+import com.vasmarfas.notivisor.core.control.CastConfig
+import com.vasmarfas.notivisor.core.control.CastQuality
 import com.vasmarfas.notivisor.core.control.CastSource
 import com.vasmarfas.notivisor.core.protocol.Pairing
 import com.vasmarfas.notivisor.core.protocol.PairingPayload
@@ -101,6 +103,41 @@ class BridgeSettings private constructor(private val prefs: SharedPreferences) {
     var castSource: CastSource
         get() = CastSource.parse(prefs.getString(KEY_CAST_SOURCE, null))
         set(value) = put { putString(KEY_CAST_SOURCE, value.name) }
+
+    var castConfig: CastConfig
+        get() = CastConfig(
+            quality = runCatching { CastQuality.valueOf(prefs.getString(KEY_CAST_QUALITY, null) ?: "") }
+                .getOrDefault(CastQuality.EYE),
+            fps = prefs.getInt(KEY_CAST_FPS, 30),
+            bitRate = prefs.getInt(KEY_CAST_BIT_RATE, 0),
+            rightEye = prefs.getBoolean(KEY_CAST_RIGHT_EYE, true),
+            sound = prefs.getBoolean(KEY_CAST_SOUND, true),
+            stabilized = prefs.getBoolean(KEY_CAST_STABILIZED, false),
+        )
+        set(value) = put {
+            putString(KEY_CAST_QUALITY, value.quality.name)
+            putInt(KEY_CAST_FPS, value.fps)
+            putInt(KEY_CAST_BIT_RATE, value.bitRate)
+            putBoolean(KEY_CAST_RIGHT_EYE, value.rightEye)
+            putBoolean(KEY_CAST_SOUND, value.sound)
+            putBoolean(KEY_CAST_STABILIZED, value.stabilized)
+        }
+
+    var webPassword: String?
+        get() = prefs.getString(KEY_WEB_PASSWORD, null)?.takeIf { it.isNotEmpty() }
+        set(value) = put { if (value == null) remove(KEY_WEB_PASSWORD) else putString(KEY_WEB_PASSWORD, value) }
+
+    var webPort: Int
+        get() = prefs.getInt(KEY_WEB_PORT, TransportConfig.WEB_CAST_PORT)
+        set(value) = put { putInt(KEY_WEB_PORT, value) }
+
+    var webControl: Boolean
+        get() = prefs.getBoolean(KEY_WEB_CONTROL, false)
+        set(value) = put { putBoolean(KEY_WEB_CONTROL, value) }
+
+    var webAutoStart: Boolean
+        get() = prefs.getBoolean(KEY_WEB_AUTO_START, false)
+        set(value) = put { putBoolean(KEY_WEB_AUTO_START, value) }
 
     var offerCodes: Boolean
         get() = prefs.getBoolean(KEY_OFFER_CODES, true)
@@ -202,6 +239,16 @@ class BridgeSettings private constructor(private val prefs: SharedPreferences) {
         private const val KEY_MIRROR_ACTIONS = "mirror_actions"
         private const val KEY_OFFER_CODES = "offer_codes"
         private const val KEY_CAST_SOURCE = "cast_source"
+        private const val KEY_CAST_QUALITY = "cast_quality"
+        private const val KEY_CAST_FPS = "cast_fps"
+        private const val KEY_CAST_BIT_RATE = "cast_bit_rate"
+        private const val KEY_CAST_RIGHT_EYE = "cast_right_eye"
+        private const val KEY_CAST_SOUND = "cast_sound"
+        private const val KEY_CAST_STABILIZED = "cast_stabilized"
+        private const val KEY_WEB_PASSWORD = "web_password"
+        private const val KEY_WEB_PORT = "web_port"
+        private const val KEY_WEB_CONTROL = "web_control"
+        private const val KEY_WEB_AUTO_START = "web_auto_start"
         private const val KEY_OVERLAY_MODE = "overlay_mode"
         private const val KEY_AUTO_DND = "auto_dnd"
         private const val KEY_PRESENCE_GATED = "presence_gated"

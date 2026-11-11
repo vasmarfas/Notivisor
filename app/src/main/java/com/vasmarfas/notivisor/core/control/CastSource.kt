@@ -2,7 +2,9 @@ package com.vasmarfas.notivisor.core.control
 
 enum class CastSource {
     MAGIC,
-    SCRCPY;
+    MAGIC_ADB,
+    SCRCPY,
+    PROJECTION;
 
     companion object {
         fun parse(name: String?): CastSource =

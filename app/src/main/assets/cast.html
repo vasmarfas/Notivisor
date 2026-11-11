@@ -1,0 +1,1694 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#1E1E25">
+<title>Notivisor</title>
+<style>
+  :root {
+    --bg: #121218; --sc: #1E1E25; --sch: #292930; --on: #E4E1E9; --onv: #C8C5D0; --out: #928F99; --outv: #47464F;
+    --pri: #C3C0FF; --onpri: #1B1794; --pc: #322EAC; --onpc: #E3E1FF; --sec: #55D6EC; --secc: #005965; --onsecc: #AFECFA;
+    --ter: #F5BE48; --err: #FFB4AB; --errc: #93000A; --onerrc: #FFDAD6; --pos: #7EDCA4;
+    --mono: ui-monospace, "Roboto Mono", Consolas, monospace;
+  }
+  * { box-sizing: border-box; scrollbar-color: var(--outv) transparent; }
+  html, body { height: 100%; margin: 0; }
+  body { display: grid; grid-template: auto 1fr / 88px 1fr; overflow: hidden; background: var(--bg); color: var(--on);
+    font: 14px/20px Roboto, system-ui, sans-serif; -webkit-tap-highlight-color: transparent; }
+  svg { width: 24px; height: 24px; fill: currentColor; flex: none; }
+  button, input, a { font-family: inherit; }
+  [hidden] { display: none !important; }
+
+  #top { grid-area: 1 / 1; padding: 16px 4px 8px; background: var(--sc); text-align: center; }
+  #top .name { padding: 0 6px; overflow: hidden; font-size: 12px; font-weight: 500; line-height: 16px; text-overflow: ellipsis; white-space: nowrap; }
+  #top .stats { display: flex; flex-direction: column; align-items: center; gap: 2px; margin-top: 6px; color: var(--onv); font-size: 12px; }
+  .stat { display: inline-flex; align-items: center; gap: 2px; }
+  .stat svg { width: 16px; height: 16px; }
+
+  nav { grid-area: 2 / 1; display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 12px 0; overflow: auto; background: var(--sc); }
+  nav button { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 80px; padding: 0; border: 0; background: none;
+    color: var(--onv); font-size: 12px; font-weight: 500; line-height: 16px; cursor: pointer; }
+  nav button i { display: grid; place-items: center; width: 56px; height: 32px; border-radius: 16px; transition: background .15s; }
+  nav button:hover i { background: rgba(228, 225, 233, .08); }
+  nav button[aria-current=page] { color: var(--on); }
+  nav button[aria-current=page] i { background: var(--secc); color: var(--onsecc); }
+  nav button:focus-visible { outline: 0; }
+  nav button:focus-visible i { outline: 2px solid var(--pri); }
+
+  main { grid-area: 1 / 2 / 3 / 3; position: relative; min-width: 0; min-height: 0; }
+  section { position: absolute; inset: 0; display: none; padding: 16px 24px 32px; overflow: auto; }
+  section.active { display: block; }
+  section.drop { outline: 2px dashed var(--pri); outline-offset: -8px; }
+  #shell.active { display: flex; flex-direction: column; }
+
+  @media (max-width: 719px) {
+    body { grid-template: auto 1fr auto / 1fr; }
+    #top { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 16px; text-align: left; }
+    #top .name { padding: 0; font-size: 16px; line-height: 24px; }
+    #top .stats { flex-direction: row; gap: 12px; margin: 0; }
+    main { grid-area: 2 / 1; }
+    nav { grid-area: 3 / 1; flex-direction: row; justify-content: space-around; gap: 0; padding: 12px 4px calc(12px + env(safe-area-inset-bottom)); }
+    nav button { width: 20%; font-size: 11px; }
+    section { padding: 12px 12px 24px; }
+  }
+
+  .btn, .ib, .chip, .row.click { position: relative; overflow: hidden; }
+  .btn::after, .ib::after, .chip::after, .row.click::after { content: ""; position: absolute; inset: 0; background: currentColor; opacity: 0;
+    transition: opacity .15s; pointer-events: none; }
+  .btn:hover::after, .ib:hover::after, .chip:hover::after, .row.click:hover::after { opacity: .08; }
+  .btn:active::after, .ib:active::after, .chip:active::after, .row.click:active::after { opacity: .12; }
+  .btn:focus-visible, .ib:focus-visible, .chip:focus-visible, .row.click:focus-visible, .switch:focus-visible, .seg button:focus-visible, .crumb:focus-visible {
+    outline: 2px solid var(--pri); outline-offset: 2px; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; flex: none; height: 40px; padding: 0 24px; border: 0;
+    border-radius: 20px; background: none; color: var(--pri); font-size: 14px; font-weight: 500; line-height: 20px; white-space: nowrap;
+    text-decoration: none; cursor: pointer; }
+  .btn svg { width: 18px; height: 18px; margin-left: -8px; }
+  .btn:disabled { opacity: .38; cursor: default; }
+  .filled { background: var(--pri); color: var(--onpri); }
+  .tonal { background: var(--secc); color: var(--onsecc); }
+  .outlined { border: 1px solid var(--out); }
+  .text { padding: 0 12px; }
+  .danger { color: var(--err); }
+  .ib { display: inline-grid; place-items: center; flex: none; width: 40px; height: 40px; padding: 0; border: 0; border-radius: 20px;
+    background: none; color: var(--onv); cursor: pointer; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+  .chip { height: 32px; padding: 0 12px; border: 1px solid var(--outv); border-radius: 8px; background: none; color: var(--onv);
+    font-size: 14px; font-weight: 500; cursor: pointer; }
+  .chip.mono { font-family: var(--mono); font-size: 12px; font-weight: 400; }
+  .seg { display: flex; overflow: hidden; border: 1px solid var(--out); border-radius: 20px; }
+  .seg button { flex: 1; min-width: 0; height: 36px; padding: 0 6px; border: 0; border-left: 1px solid var(--out); background: none;
+    color: var(--on); font-size: 13px; font-weight: 500; white-space: nowrap; cursor: pointer; }
+  .seg button:first-child { border-left: 0; }
+  .seg button.on { background: var(--secc); color: var(--onsecc); }
+  .seg button:hover:not(.on) { background: rgba(228, 225, 233, .08); }
+  .switch { position: relative; flex: none; width: 52px; height: 32px; padding: 0; border: 2px solid var(--out); border-radius: 16px;
+    background: var(--sch); cursor: pointer; }
+  .switch span { position: absolute; top: 50%; left: 6px; width: 16px; height: 16px; margin-top: -8px; border-radius: 50%;
+    background: var(--out); transition: .15s; }
+  .switch[aria-checked=true] { border-color: var(--pri); background: var(--pri); }
+  .switch[aria-checked=true] span { left: 22px; width: 24px; height: 24px; margin-top: -12px; background: var(--onpri); }
+  .field { min-width: 0; height: 44px; padding: 0 14px; border: 1px solid var(--out); border-radius: 8px; outline: 0; background: none;
+    color: var(--on); font-size: 14px; }
+  .field:focus { border-color: var(--pri); box-shadow: inset 0 0 0 1px var(--pri); }
+  .field::placeholder { color: var(--out); }
+  .check { display: inline-flex; align-items: center; gap: 8px; color: var(--onv); cursor: pointer; }
+
+  .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 8px; }
+  .toolbar h1 { margin: 0; font-size: 22px; font-weight: 400; line-height: 40px; }
+  .grow { flex: 1; }
+  .note { margin: 0; color: var(--onv); font-size: 12px; line-height: 16px; }
+  section > .note { margin-bottom: 12px; }
+  code { padding: 1px 6px; border-radius: 6px; background: var(--sch); font-family: var(--mono); }
+
+  .list { overflow: hidden; border-radius: 16px; background: var(--sc); }
+  .row { display: flex; align-items: center; gap: 16px; min-height: 56px; padding: 8px 8px 8px 16px; }
+  .row + .row { border-top: 1px solid rgba(71, 70, 79, .5); }
+  .row.click { cursor: pointer; }
+  .row > svg { color: var(--onv); }
+  .row-text { flex: 1 1 160px; min-width: 0; }
+  .row-title { overflow: hidden; font-size: 16px; line-height: 24px; text-overflow: ellipsis; white-space: nowrap; }
+  .row-sub { overflow: hidden; color: var(--onv); font-size: 12px; line-height: 16px; text-overflow: ellipsis; white-space: nowrap; }
+  .row-sub.wrap { white-space: normal; }
+  .row-actions { display: flex; flex: none; margin-left: auto; }
+  .app-icon { flex: none; width: 40px; height: 40px; border-radius: 10px; background: var(--sch); object-fit: cover; }
+  @media (max-width: 719px) { .row { flex-wrap: wrap; gap: 0 12px; } .row-text { flex-basis: 60%; } }
+
+  .empty { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 48px 24px; color: var(--onv); text-align: center; }
+  .empty > svg { width: 48px; height: 48px; color: var(--out); }
+  .empty h2 { margin: 0; color: var(--on); font-size: 18px; font-weight: 500; line-height: 24px; }
+  .empty p { max-width: 440px; margin: 0 0 8px; }
+  .help { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 16px; }
+  .help h3 { margin: 0; font-size: 16px; font-weight: 500; line-height: 24px; }
+  .help ol { margin: 0; padding-left: 20px; }
+  .help li { margin: 4px 0; }
+  .help .progress { align-self: stretch; }
+  .card .help { padding: 0; }
+
+  .progress { height: 4px; overflow: hidden; border-radius: 2px; background: var(--outv); }
+  .progress i { display: block; width: 0; height: 100%; background: var(--pri); transition: width .2s; }
+  .progress.wait i { width: 40%; animation: slide 1.2s infinite ease-in-out; }
+  @keyframes slide { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
+  .list > .progress { margin: 24px 16px; }
+  .jobs { display: flex; flex-direction: column; gap: 8px; margin: 8px 0; }
+  .jobs:empty { display: none; }
+  .job { padding: 6px 8px 12px 16px; border-radius: 12px; background: var(--sc); }
+  .job-head { display: flex; align-items: center; gap: 12px; min-height: 32px; margin-bottom: 4px; }
+  .job-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .job-state { color: var(--onv); font-size: 12px; text-align: right; }
+  .job .ib { width: 32px; height: 32px; }
+  .job .ib svg { width: 18px; height: 18px; }
+  .job.fail .job-state { color: var(--err); }
+  .job.fail .progress i { background: var(--err); }
+  .job.done .progress i { background: var(--pos); }
+
+  .crumbs { display: flex; flex-wrap: wrap; align-items: center; margin: 4px 0 8px; color: var(--onv); }
+  .crumb { padding: 4px 6px; border: 0; border-radius: 8px; background: none; color: var(--pri); font-size: 14px; font-weight: 500; cursor: pointer; }
+  .crumb:hover { background: rgba(195, 192, 255, .08); }
+  .crumb:last-of-type { color: var(--on); }
+
+  .term { flex: 1; min-height: 160px; margin-top: 8px; padding: 12px 16px; overflow: auto; border-radius: 12px; background: #0B0B10;
+    font: 12px/18px var(--mono); white-space: pre-wrap; word-break: break-word; }
+  .term .cmd { color: var(--pri); }
+  .term .exit { color: var(--err); }
+  .term-line { display: flex; align-items: center; gap: 8px; margin-top: 8px; padding: 4px 4px 4px 16px; border-radius: 24px;
+    background: var(--sc); font-family: var(--mono); }
+  .term-line input { flex: 1; min-width: 0; height: 40px; border: 0; outline: 0; background: none; color: var(--on); font: 13px var(--mono); }
+
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; align-items: start; }
+  .card { display: flex; flex-direction: column; gap: 12px; min-width: 0; padding: 16px; border-radius: 16px; background: var(--sc); }
+  .card h2 { margin: 0; font-size: 16px; font-weight: 500; line-height: 24px; }
+  .kv { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; margin: 0; }
+  .kv dt { color: var(--onv); }
+  .kv dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
+  .line { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .line .field { flex: 1 1 160px; }
+  .srow { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .ok { color: var(--pos); font-weight: 500; }
+  .log { max-height: 320px; margin: 0; padding: 12px; overflow: auto; border-radius: 12px; background: #0B0B10; font: 11px/16px var(--mono);
+    white-space: pre-wrap; word-break: break-word; }
+
+  #cast { padding: 0; overflow: hidden; background: #000; }
+  #cast.idle { cursor: none; }
+  #video { position: absolute; inset: 0; width: 100%; height: 100%; background: #000; object-fit: contain; }
+  #bar { position: absolute; right: 0; bottom: 0; left: 0; display: flex; align-items: center; gap: 2px; padding: 28px 12px 10px;
+    background: linear-gradient(transparent, rgba(0, 0, 0, .75)); transition: opacity .3s; }
+  #cast.idle #bar { opacity: 0; pointer-events: none; }
+  #bar .ib { color: #fff; }
+  #bar .ib.on { color: var(--pri); }
+  #bar .ib.rec { color: var(--err); }
+  #status { display: flex; flex: 1; align-items: center; gap: 8px; min-width: 0; padding-left: 8px; }
+  #status i { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--ter); }
+  #status.live i { background: var(--pos); }
+  #status span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #rec { margin: 0 4px; color: var(--err); font-variant-numeric: tabular-nums; }
+  #banner { position: absolute; top: 12px; left: 50%; max-width: min(560px, calc(100% - 24px)); padding: 10px 16px; border-radius: 12px;
+    background: var(--errc); color: var(--onerrc); text-align: center; transform: translateX(-50%); }
+  #stats { position: absolute; top: 12px; left: 12px; margin: 0; padding: 8px 12px; border-radius: 8px; background: rgba(0, 0, 0, .6);
+    color: #fff; font: 12px/18px var(--mono); }
+  #sheet { position: absolute; top: 0; right: 0; bottom: 0; display: flex; flex-direction: column; gap: 16px; width: 340px; max-width: 100%;
+    padding: 12px 16px 24px; overflow: auto; border-radius: 16px 0 0 16px; background: var(--sc); box-shadow: -8px 0 24px rgba(0, 0, 0, .4); }
+  #sheet h2 { margin: 0; font-size: 22px; font-weight: 400; line-height: 40px; }
+  .set { display: flex; flex-direction: column; gap: 6px; }
+  .set > div:first-child { color: var(--onv); font-size: 12px; line-height: 16px; }
+  @media (max-width: 719px) {
+    #sheet { top: auto; left: 0; width: auto; max-height: 80%; border-radius: 28px 28px 0 0; }
+    #bar { padding: 28px 4px 6px; }
+  }
+
+  #snack { position: fixed; bottom: 96px; left: 50%; z-index: 10; max-width: min(560px, calc(100% - 32px)); padding: 12px 16px;
+    border-radius: 8px; background: #E4E1E9; box-shadow: 0 4px 12px rgba(0, 0, 0, .4); color: #303036; opacity: 0;
+    transform: translate(-50%, 20px); transition: .2s; pointer-events: none; }
+  #snack.show { opacity: 1; transform: translate(-50%, 0); }
+  dialog { min-width: min(320px, calc(100% - 32px)); max-width: min(640px, calc(100% - 32px)); padding: 24px; border: 0; border-radius: 28px;
+    background: var(--sch); color: var(--on); }
+  dialog::backdrop { background: rgba(0, 0, 0, .6); }
+  dialog h2 { margin: 0 0 12px; font-size: 22px; font-weight: 400; line-height: 28px; }
+  dialog p { margin: 0 0 16px; color: var(--onv); overflow-wrap: anywhere; }
+  dialog .field { width: 100%; margin-bottom: 8px; }
+  dialog img { display: block; max-width: 100%; margin-bottom: 12px; border-radius: 12px; }
+  .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+<header id="top"></header>
+<nav id="nav"></nav>
+<main>
+  <section id="cast">
+    <video id="video" muted autoplay playsinline></video>
+    <div id="banner" role="alert" hidden></div>
+    <pre id="stats" hidden></pre>
+    <div id="bar"></div>
+    <aside id="sheet" hidden></aside>
+  </section>
+  <section id="apps"></section>
+  <section id="files"></section>
+  <section id="shell"></section>
+  <section id="device"></section>
+</main>
+<div id="snack" role="status"></div>
+<dialog id="dialog"></dialog>
+<script>
+'use strict';
+
+// A page opened as http://user:password@host keeps the credentials in its base URL, and fetch refuses such URLs.
+document.head.appendChild(Object.assign(document.createElement('base'), { href: location.origin + location.pathname }));
+
+const RU = (navigator.language || 'en').toLowerCase().startsWith('ru');
+document.documentElement.lang = RU ? 'ru' : 'en';
+
+const T = RU ? {
+  cast: 'Трансляция', apps: 'Приложения', files: 'Файлы', shell: 'Консоль', device: 'Устройство',
+  connecting: 'Подключение…', waiting: 'Ждём картинку…', live: 'В эфире', lost: 'Связь пропала, переподключаемся…',
+  busy: 'Уже смотрят четыре зрителя, ждём свободного места…', codec: 'Браузер не умеет воспроизводить этот поток',
+  paused: 'Просмотр приостановлен', auth: 'Пароль изменился, обновите страницу', applying: 'Применяем…',
+  starting: 'Шлем запускает захват…', trouble: 'Шлем не отдаёт картинку и пробует снова',
+  soundOn: 'Включить звук (M)', soundOff: 'Выключить звук (M)', snapshot: 'Сохранить кадр', record: 'Записать видео',
+  stopRecord: 'Остановить запись', pip: 'Картинка в картинке', stats: 'Сведения о потоке (I)', fullscreen: 'Во весь экран (F)',
+  settings: 'Параметры трансляции', noPicture: 'Картинки пока нет', recEmpty: 'Запись пуста: ключевой кадр не пришёл',
+  recLimit: 'Запись остановлена на 1,5 ГБ', fpsUnit: 'кадров/с', mbit: 'Мбит/с', bufferMs: 'буфер', ms: 'мс',
+  source: 'Способ захвата', quality: 'Разрешение', eye: 'Глаз', fps: 'Кадров в секунду', bitrate: 'Битрейт, Мбит/с', auto: 'Авто',
+  eyeSide: 'Какой глаз показывать', left: 'Левый', right: 'Правый', stabilized: 'Стабилизация', soundSetting: 'Звук',
+  settingsNote: 'Изменения применяются сразу, картинка возвращается через пару секунд.', projection: 'Запись экрана',
+  cancel: 'Отмена', close: 'Закрыть', refresh: 'Обновить', search: 'Поиск', failed: 'Не получилось', network: 'Нет связи со шлемом',
+  retry: 'Повторить',
+  controlOffTitle: 'Управление из браузера выключено',
+  controlOffText: 'Включите «Управление из браузера» в Notivisor на шлеме. Для него нужен пароль.',
+  controlOffShort: 'Управление из браузера выключено на шлеме',
+  adbTitle: 'adb шлема', adbOffline: 'adb шлема не подключён', adbUnauthorized: 'Шлем ждёт подтверждения',
+  adbStep1: 'Подключите шлем к компьютеру кабелем.', adbStep2: 'Выполните на компьютере `adb tcpip 5555`.',
+  adbStep3: 'Наденьте шлем и в окне «Разрешить отладку по USB?» выберите «Всегда разрешать».',
+  adbAfter: 'После этого компьютер не нужен: приложение само включает беспроводную отладку после каждой перезагрузки. Шлем один раз спросит разрешение для каждой сети Wi-Fi.',
+  adbCheck: 'Проверить снова', adbChecking: 'Проверяем adb…', adbReady: 'adb шлема готов',
+  adbReadyText: 'Установка приложений, файлы, консоль и снимки экрана доступны.',
+  adbNeeded: 'Для этого нужен adb шлема. Как его настроить, написано в разделе «Устройство».',
+  system: 'Системные', install: 'Установить APK', installHint: 'Файлы APK можно перетащить в это окно.', launch: 'Запустить',
+  stopApp: 'Остановить', apk: 'Скачать APK', uninstall: 'Удалить', uninstallAsk: name => `Удалить «${name}»?`,
+  launched: 'Запущено', stopped: 'Остановлено', uninstalled: 'Удалено', noApps: 'Ничего не найдено', onlyApk: 'Нужны файлы .apk',
+  queued: 'В очереди', sending: 'Отправка', installing: 'Устанавливается…', installed: 'Установлено',
+  upload: 'Загрузить', saving: 'Сохраняется…', uploaded: 'Загружено', newFolder: 'Новая папка', create: 'Создать',
+  rename: 'Переименовать', del: 'Удалить', download: 'Скачать', deleteAsk: name => `Удалить «${name}»?`,
+  deleteDir: 'Папка будет удалена вместе с содержимым.', deleteFile: 'Файл будет удалён без возможности восстановления.',
+  emptyDir: 'Папка пуста', badName: 'Имя не должно содержать «/»', dropHint: 'Файлы можно перетащить в это окно, они попадут в открытую папку.',
+  command: 'Команда', run: 'Выполнить', clear: 'Очистить', exitCode: 'код возврата',
+  shellNote: 'Команды выполняются на шлеме от имени пользователя shell, через его собственный adb. Ответа сервер ждёт не дольше 60 секунд.',
+  info: 'Сведения', model: 'Шлем', address: 'Адрес', battery: 'Батарея', charging: 'заряжается', storage: 'Память',
+  free: (free, total) => `свободно ${free} из ${total}`, actions: 'Быстрые действия', volumeDown: 'Тише', volumeUp: 'Громче',
+  home: 'Домой', back: 'Назад', proximity: 'Отключить датчик приближения', proxOn: 'Шлем считает себя надетым и не засыпает',
+  proxOff: 'Датчик работает как обычно', proxUnknown: 'Состояние неизвестно', screenshot: 'Снимок экрана',
+  urlHint: 'Ссылка, которую открыть в шлеме', open: 'Открыть', textHint: 'Текст для шлема', type: 'Напечатать',
+  toClipboard: 'В буфер обмена', reboot: 'Перезагрузить шлем', rebootAsk: 'Перезагрузить шлем?',
+  rebootText: 'Трансляция и все подключения прервутся.', rebooting: 'Шлем перезагружается', sent: 'Отправлено',
+  copied: 'Скопировано', log: 'Журнал', copy: 'Копировать', viewers: 'Зрители', units: ['Б', 'КБ', 'МБ', 'ГБ'],
+} : {
+  cast: 'Cast', apps: 'Apps', files: 'Files', shell: 'Console', device: 'Device',
+  connecting: 'Connecting…', waiting: 'Waiting for the picture…', live: 'Live', lost: 'Connection lost, reconnecting…',
+  busy: 'Four viewers are already watching, waiting for a free slot…', codec: 'This browser cannot play the stream',
+  paused: 'Viewing is paused', auth: 'The password has changed, reload the page', applying: 'Applying…',
+  starting: 'The headset is starting the capture…', trouble: 'The headset has no picture yet and keeps trying',
+  soundOn: 'Sound on (M)', soundOff: 'Sound off (M)', snapshot: 'Save a frame', record: 'Record video',
+  stopRecord: 'Stop recording', pip: 'Picture in picture', stats: 'Stream details (I)', fullscreen: 'Full screen (F)',
+  settings: 'Cast settings', noPicture: 'No picture yet', recEmpty: 'The recording is empty: no keyframe arrived',
+  recLimit: 'Recording stopped at 1.5 GB', fpsUnit: 'fps', mbit: 'Mbit/s', bufferMs: 'buffer', ms: 'ms',
+  source: 'Capture method', quality: 'Resolution', eye: 'Eye', fps: 'Frames per second', bitrate: 'Bitrate, Mbit/s', auto: 'Auto',
+  eyeSide: 'Which eye to show', left: 'Left', right: 'Right', stabilized: 'Stabilization', soundSetting: 'Sound',
+  settingsNote: 'Changes apply at once, the picture is back in a couple of seconds.', projection: 'Screen recording',
+  cancel: 'Cancel', close: 'Close', refresh: 'Refresh', search: 'Search', failed: 'That did not work', network: 'The headset is unreachable',
+  retry: 'Try again',
+  controlOffTitle: 'Management from the browser is off',
+  controlOffText: 'Turn on “Management from the browser” in Notivisor on the headset. It requires a password.',
+  controlOffShort: 'Management from the browser is off on the headset',
+  adbTitle: 'Headset adb', adbOffline: 'The headset adb is not connected', adbUnauthorized: 'The headset is waiting for confirmation',
+  adbStep1: 'Connect the headset to a computer with a cable.', adbStep2: 'Run `adb tcpip 5555` on the computer.',
+  adbStep3: 'Put the headset on and choose “Always allow” in the “Allow USB debugging?” window.',
+  adbAfter: 'After that the computer is not needed: the app turns wireless debugging on by itself after every reboot. The headset asks once for each Wi-Fi network.',
+  adbCheck: 'Check again', adbChecking: 'Checking adb…', adbReady: 'The headset adb is ready',
+  adbReadyText: 'App installation, files, the console and screenshots are available.',
+  adbNeeded: 'This needs the headset adb. The Device section explains how to set it up.',
+  system: 'System', install: 'Install APK', installHint: 'APK files can be dropped onto this window.', launch: 'Launch',
+  stopApp: 'Stop', apk: 'Download APK', uninstall: 'Uninstall', uninstallAsk: name => `Uninstall “${name}”?`,
+  launched: 'Launched', stopped: 'Stopped', uninstalled: 'Uninstalled', noApps: 'Nothing found', onlyApk: 'Only .apk files are accepted',
+  queued: 'Queued', sending: 'Sending', installing: 'Installing…', installed: 'Installed',
+  upload: 'Upload', saving: 'Saving…', uploaded: 'Uploaded', newFolder: 'New folder', create: 'Create',
+  rename: 'Rename', del: 'Delete', download: 'Download', deleteAsk: name => `Delete “${name}”?`,
+  deleteDir: 'The folder will be deleted with everything in it.', deleteFile: 'The file will be deleted for good.',
+  emptyDir: 'The folder is empty', badName: 'The name must not contain “/”', dropHint: 'Files can be dropped onto this window, they go to the open folder.',
+  command: 'Command', run: 'Run', clear: 'Clear', exitCode: 'exit code',
+  shellNote: 'Commands run on the headset as the shell user, through its own adb. The server waits for an answer for up to 60 seconds.',
+  info: 'Details', model: 'Headset', address: 'Address', battery: 'Battery', charging: 'charging', storage: 'Storage',
+  free: (free, total) => `${free} free of ${total}`, actions: 'Quick actions', volumeDown: 'Volume down', volumeUp: 'Volume up',
+  home: 'Home', back: 'Back', proximity: 'Turn the proximity sensor off', proxOn: 'The headset believes it is worn and does not sleep',
+  proxOff: 'The sensor works as usual', proxUnknown: 'State unknown', screenshot: 'Screenshot',
+  urlHint: 'Link to open in the headset', open: 'Open', textHint: 'Text for the headset', type: 'Type it',
+  toClipboard: 'To clipboard', reboot: 'Reboot the headset', rebootAsk: 'Reboot the headset?',
+  rebootText: 'The cast and every connection will drop.', rebooting: 'The headset is rebooting', sent: 'Sent',
+  copied: 'Copied', log: 'Log', copy: 'Copy', viewers: 'Viewers', units: ['B', 'KB', 'MB', 'GB'],
+};
+
+const ICONS = {
+  cast: 'M21 3H3c-1.1 0-2 .9-2 2v3h2V5h18v14h-7v2h7c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM1 18v3h3c0-1.66-1.34-3-3-3zm0-4v2c2.76 0 5 2.24 5 5h2c0-3.87-3.13-7-7-7zm0-4v2c4.97 0 9 4.03 9 9h2c0-6.08-4.93-11-11-11z',
+  apps: 'M4 8h4V4H4v4zm6 12h4v-4h-4v4zm-6 0h4v-4H4v4zm0-6h4v-4H4v4zm6 0h4v-4h-4v4zm6-10v4h4V4h-4zm-6 4h4V4h-4v4zm6 6h4v-4h-4v4zm0 6h4v-4h-4v4z',
+  folder: 'M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z',
+  file: 'M6 2c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6H6zm7 7V3.5L18.5 9H13z',
+  terminal: 'M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4V8h16v10zm-2-1h-6v-2h6v2zM7.5 17l-1.41-1.41L8.67 13l-2.59-2.59L7.5 9l4 4-4 4z',
+  headset: 'M20.74 6H3.21C2.55 6 2 6.57 2 7.28v10.44c0 .7.55 1.28 1.23 1.28h4.79c.52 0 .96-.33 1.14-.79l1.4-3.48c.23-.59.79-1.01 1.44-1.01s1.21.42 1.45 1.01l1.39 3.48c.19.46.63.79 1.11.79h4.79c.71 0 1.26-.57 1.26-1.28V7.28c0-.7-.55-1.28-1.26-1.28zM7.5 14.62c-1.17 0-2.13-.95-2.13-2.12 0-1.17.96-2.13 2.13-2.13 1.18 0 2.12.96 2.12 2.13S8.68 14.62 7.5 14.62zm9 0c-1.17 0-2.13-.95-2.13-2.12 0-1.17.96-2.13 2.13-2.13s2.12.96 2.12 2.13-.95 2.12-2.12 2.12z',
+  volumeUp: 'M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z',
+  volumeDown: 'M18.5 12c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM5 9v6h4l5 5V4L9 9H5z',
+  volumeOff: 'M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z',
+  camera: 'M9 2L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8.2a3.2 3.2 0 1 0 0 6.4 3.2 3.2 0 0 0 0-6.4z',
+  record: 'M12 4a8 8 0 1 0 0 16 8 8 0 0 0 0-16z',
+  stop: 'M6 6h12v12H6z',
+  pip: 'M19 7h-8v6h8V7zm2-4H3c-1.1 0-2 .9-2 2v14c0 1.1.9 1.98 2 1.98h18c1.1 0 2-.88 2-1.98V5c0-1.1-.9-2-2-2zm0 16.01H3V4.98h18v14.03z',
+  info: 'M11 7h2v2h-2zm0 4h2v6h-2zm1-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z',
+  fullscreen: 'M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z',
+  tune: 'M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z',
+  search: 'M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z',
+  download: 'M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z',
+  upload: 'M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z',
+  delete: 'M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z',
+  refresh: 'M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z',
+  newFolder: 'M20 6h-8l-2-2H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-1 8h-3v3h-2v-3h-3v-2h3V9h2v3h3v2z',
+  play: 'M8 5v14l11-7z',
+  close: 'M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z',
+  edit: 'M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z',
+  home: 'M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z',
+  back: 'M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z',
+  power: 'M13 3h-2v10h2V3zm4.83 2.17l-1.42 1.42C17.99 7.86 19 9.81 19 12c0 3.87-3.13 7-7 7s-7-3.13-7-7c0-2.19 1.01-4.14 2.58-5.42L6.17 5.17C4.23 6.82 3 9.26 3 12c0 4.97 4.03 9 9 9s9-4.03 9-9c0-2.74-1.23-5.18-3.17-6.83z',
+  copy: 'M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z',
+  eye: 'M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z',
+  battery: 'M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z',
+  bolt: 'M7 2v11h3v9l7-12h-4l4-8z',
+};
+
+const SECTIONS = ['cast', 'apps', 'files', 'shell', 'device'];
+const SECTION_ICONS = { cast: 'cast', apps: 'apps', files: 'folder', shell: 'terminal', device: 'headset' };
+const SOURCES = { MAGIC: 'Quest', MAGIC_ADB: 'Quest + adb', SCRCPY: 'scrcpy', PROJECTION: T.projection };
+const QUICK_PATHS = [['/sdcard', '/sdcard'], ['Download', '/sdcard/Download'], ['Oculus/Screenshots', '/sdcard/Oculus/Screenshots'],
+  ['Oculus/VideoShots', '/sdcard/Oculus/VideoShots'], ['Android/obb', '/sdcard/Android/obb'], ['Android/data', '/sdcard/Android/data'],
+  ['DCIM', '/sdcard/DCIM'], ['Movies', '/sdcard/Movies']];
+const QUICK_COMMANDS = ['getprop ro.build.version.release', 'pm list packages -3', 'dumpsys battery', 'df -h /sdcard', 'logcat -d -t 100'];
+
+const $ = id => document.getElementById(id);
+const NS = 'http://www.w3.org/2000/svg';
+
+function h(tag, props, ...children) {
+  const node = document.createElement(tag);
+  for (const [key, value] of Object.entries(props || {})) {
+    if (value == null || value === false) continue;
+    if (key === 'class') node.className = value;
+    else if (key === 'text') node.textContent = value;
+    else if (key.startsWith('on')) node.addEventListener(key.slice(2), value);
+    else if (key !== 'role' && !key.includes('-') && key in node) node[key] = value;
+    else node.setAttribute(key, value);
+  }
+  for (const child of children.flat(Infinity)) if (child != null && child !== false) node.append(child);
+  return node;
+}
+
+function icon(name) {
+  const svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('aria-hidden', 'true');
+  const path = document.createElementNS(NS, 'path');
+  path.setAttribute('d', ICONS[name]);
+  svg.append(path);
+  return svg;
+}
+
+function button(kind, label, onclick, glyph) {
+  return h('button', { class: 'btn ' + kind, type: 'button', onclick }, glyph && icon(glyph), label);
+}
+
+function iconButton(glyph, label, onclick) {
+  return h('button', { class: 'ib', type: 'button', title: label, 'aria-label': label, onclick }, icon(glyph));
+}
+
+function setGlyph(node, glyph, label) {
+  node.replaceChildren(icon(glyph));
+  node.title = label;
+  node.setAttribute('aria-label', label);
+}
+
+function toggle(checked, onchange, label) {
+  const node = h('button', { class: 'switch', type: 'button', role: 'switch', 'aria-checked': String(!!checked), 'aria-label': label }, h('span'));
+  node.addEventListener('click', () => {
+    const next = node.getAttribute('aria-checked') !== 'true';
+    node.setAttribute('aria-checked', String(next));
+    onchange(next);
+  });
+  return node;
+}
+
+function segmented(options, selected, onselect) {
+  return h('div', { class: 'seg', role: 'group' }, options.map(option => h('button', {
+    type: 'button', class: option.value === selected && 'on', 'aria-pressed': String(option.value === selected), text: option.label,
+    onclick: () => option.value !== selected && onselect(option.value),
+  })));
+}
+
+function progress(fraction) {
+  const bar = h('i');
+  if (fraction != null) bar.style.width = Math.round(fraction * 100) + '%';
+  return h('div', { class: fraction == null ? 'progress wait' : 'progress' }, bar);
+}
+
+function empty(glyph, title, text, extra) {
+  return h('div', { class: 'empty' }, icon(glyph), h('h2', { text: title }), text && h('p', { text }), extra);
+}
+
+function rich(text) {
+  return text.split('`').map((part, index) => index % 2 ? h('code', { text: part }) : part);
+}
+
+let snackTimer = 0;
+function toast(text) {
+  const snack = $('snack');
+  (document.fullscreenElement || document.body).append(snack);
+  snack.textContent = text;
+  snack.classList.add('show');
+  clearTimeout(snackTimer);
+  snackTimer = setTimeout(() => snack.classList.remove('show'), 4000);
+}
+
+function ask({ title, text, input, body, action, danger, dismiss }) {
+  return new Promise(resolve => {
+    const dialog = $('dialog');
+    const field = input !== undefined && h('input', { class: 'field', type: 'text', value: input, autocomplete: 'off' });
+    const none = field ? null : false;
+    const finish = value => {
+      dialog.close();
+      resolve(value);
+    };
+    dialog.replaceChildren(h('form', { onsubmit: event => { event.preventDefault(); finish(field ? field.value.trim() : true); } },
+      h('h2', { text: title }), text && h('p', { text }), field, body,
+      h('div', { class: 'actions' },
+        button('text', dismiss || T.cancel, () => finish(none)),
+        action && h('button', { class: danger ? 'btn text danger' : 'btn text', type: 'submit', text: action }))));
+    dialog.oncancel = () => resolve(none);
+    dialog.showModal();
+    if (field) field.select();
+  });
+}
+
+function human(bytes) {
+  let unit = 0;
+  let value = bytes;
+  while (value >= 1024 && unit < 3) {
+    value /= 1024;
+    unit++;
+  }
+  return (unit && value < 100 ? value.toFixed(1) : Math.round(value)) + ' ' + T.units[unit];
+}
+
+function stamp() {
+  const now = new Date();
+  const two = value => String(value).padStart(2, '0');
+  return `notivisor-${now.getFullYear()}${two(now.getMonth() + 1)}${two(now.getDate())}-${two(now.getHours())}${two(now.getMinutes())}${two(now.getSeconds())}`;
+}
+
+function save(blob, name) {
+  const url = URL.createObjectURL(blob);
+  h('a', { href: url, download: name }).click();
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+
+function copyText(text) {
+  const done = () => toast(T.copied);
+  const legacy = () => {
+    const area = h('textarea', { value: text });
+    area.style.cssText = 'position:fixed;opacity:0';
+    document.body.append(area);
+    area.select();
+    if (document.execCommand('copy')) done();
+    area.remove();
+  };
+  if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(text).then(done, legacy);
+  else legacy();
+}
+
+async function check(response) {
+  if (response.ok) return response;
+  let data = null;
+  try { data = await response.json(); } catch (error) {}
+  const failure = new Error((data && data.error) || 'HTTP ' + response.status);
+  failure.code = data && data.error;
+  throw failure;
+}
+
+async function api(path, body) {
+  const options = { cache: 'no-store' };
+  if (body !== undefined) {
+    options.method = 'POST';
+    options.headers = { 'X-Notivisor': '1', 'Content-Type': 'application/json' };
+    options.body = JSON.stringify(body);
+  }
+  const response = await check(await fetch(path, options));
+  return response.status === 204 ? null : response.json();
+}
+
+function upload(method, url, body, headers, onProgress) {
+  return new Promise((resolve, reject) => {
+    const request = new XMLHttpRequest();
+    request.open(method, url);
+    request.setRequestHeader('X-Notivisor', '1');
+    for (const [name, value] of Object.entries(headers)) request.setRequestHeader(name, value);
+    request.upload.onprogress = event => event.lengthComputable && onProgress(event.loaded / event.total);
+    request.onerror = () => reject(new Error(T.network));
+    request.onload = () => {
+      let data = null;
+      try { data = JSON.parse(request.responseText); } catch (error) {}
+      if (request.status >= 200 && request.status < 300) return resolve(data);
+      const failure = new Error((data && data.error) || 'HTTP ' + request.status);
+      failure.code = data && data.error;
+      reject(failure);
+    };
+    request.send(body);
+  });
+}
+
+function describe(error) {
+  const code = error && error.code;
+  if (code === 'control_off') return T.controlOffShort;
+  if (code === 'adb_offline' || code === 'adb_unauthorized') return T.adbNeeded;
+  return (error && error.message) || T.failed;
+}
+
+const fail = error => toast(describe(error));
+
+function controlOff() {
+  return empty('tune', T.controlOffTitle, T.controlOffText);
+}
+
+function adbHelp(kind) {
+  if (state && state.adb === 'CHECKING') return h('div', { class: 'help' }, h('h3', { text: T.adbChecking }), progress());
+  const steps = kind === 'UNAUTHORIZED' ? [T.adbStep3] : [T.adbStep1, T.adbStep2, T.adbStep3];
+  return h('div', { class: 'help' },
+    h('h3', { text: kind === 'UNAUTHORIZED' ? T.adbUnauthorized : T.adbOffline }),
+    h('ol', null, steps.map(step => h('li', null, rich(step)))),
+    h('p', { class: 'note', text: T.adbAfter }),
+    button('tonal', T.adbCheck, checkAdb, 'refresh'));
+}
+
+async function checkAdb() {
+  try {
+    const result = await api('api/adb/check', {});
+    if (state) apply({ ...state, adb: result.adb });
+    setTimeout(poll, 1500);
+  } catch (error) {
+    fail(error);
+  }
+}
+
+function showError(container, error, retry) {
+  const code = error && error.code;
+  if (code === 'control_off') container.replaceChildren(controlOff());
+  else if (code === 'adb_offline') container.replaceChildren(adbHelp('OFFLINE'));
+  else if (code === 'adb_unauthorized') container.replaceChildren(adbHelp('UNAUTHORIZED'));
+  else container.replaceChildren(empty('info', T.failed, describe(error), button('tonal', T.retry, retry, 'refresh')));
+}
+
+function dropZone(node, onFiles) {
+  let depth = 0;
+  const withFiles = event => [...event.dataTransfer.types].includes('Files');
+  node.addEventListener('dragenter', event => {
+    if (!withFiles(event)) return;
+    event.preventDefault();
+    depth++;
+    node.classList.add('drop');
+  });
+  node.addEventListener('dragover', event => withFiles(event) && event.preventDefault());
+  node.addEventListener('dragleave', () => {
+    if (--depth > 0) return;
+    depth = 0;
+    node.classList.remove('drop');
+  });
+  node.addEventListener('drop', event => {
+    event.preventDefault();
+    depth = 0;
+    node.classList.remove('drop');
+    const dropped = [...event.dataTransfer.files];
+    if (dropped.length && state && state.control) onFiles(dropped);
+  });
+}
+
+function transfers(send, finishing, finished, after) {
+  const node = h('div', { class: 'jobs' });
+  const waiting = [];
+  let busy = false;
+
+  async function run() {
+    if (busy) return;
+    busy = true;
+    let any = false;
+    for (let job; (job = waiting.shift());) {
+      try {
+        await send(job.item, part => job.set(part < 1 ? `${T.sending} ${Math.round(part * 100)}%` : finishing, part, ''));
+        job.set(finished, 1, 'done');
+        any = true;
+        setTimeout(() => job.node.remove(), 8000);
+      } catch (error) {
+        job.set(describe(error), 1, 'fail');
+      }
+      job.close.hidden = false;
+    }
+    busy = false;
+    if (any) after();
+  }
+
+  function add(items, name) {
+    for (const item of items) {
+      const bar = h('i');
+      const label = h('span', { class: 'job-state' });
+      const close = iconButton('close', T.close, () => job.node.remove());
+      close.hidden = true;
+      const job = {
+        item, close,
+        node: h('div', { class: 'job' }, h('div', { class: 'job-head' }, h('span', { class: 'job-name', text: name(item) }), label, close),
+          h('div', { class: 'progress' }, bar)),
+        set(text, fraction, kind) {
+          label.textContent = text;
+          bar.style.width = Math.round(fraction * 100) + '%';
+          job.node.className = 'job ' + kind;
+        },
+      };
+      job.set(T.queued, 0, '');
+      node.append(job.node);
+      waiting.push(job);
+    }
+    run();
+  }
+
+  return { node, add };
+}
+
+// ---- state
+
+let state = null;
+let gateKey = '';
+let sheetKey = '';
+let current = 'cast';
+let announce;
+const ready = new Promise(resolve => { announce = resolve; });
+
+async function poll() {
+  if (document.hidden && state) return;
+  try {
+    apply(await api('api/state'));
+  } catch (error) {
+    if (!state) apply(null);
+  }
+  announce();
+}
+
+function apply(next) {
+  state = next;
+  renderTop();
+  const banner = $('banner');
+  banner.hidden = !(state && state.cast.error);
+  banner.textContent = state ? state.cast.error || '' : '';
+  tuneButton.hidden = !(state && state.control);
+  if (!$('sheet').hidden) {
+    if (state && state.control) renderSheet();
+    else closeSheet();
+  }
+  const key = state ? state.control + ' ' + state.adb : '';
+  const changed = key !== gateKey;
+  gateKey = key;
+  if (current === 'cast') return;
+  if (changed) openers[current]();
+  else if (current === 'device') refreshDevice();
+}
+
+function renderTop() {
+  $('top').replaceChildren(
+    h('div', { class: 'name', text: state ? state.device.name : 'Notivisor' }),
+    state && h('div', { class: 'stats' },
+      h('span', { class: 'stat', title: T.battery }, icon(state.battery.charging ? 'bolt' : 'battery'), state.battery.level + '%'),
+      h('span', { class: 'stat', title: T.viewers }, icon('eye'), String(state.cast.viewers))));
+}
+
+function blocked(root) {
+  if (state && state.control) return false;
+  root.replaceChildren(controlOff());
+  return true;
+}
+
+async function entering(name) {
+  await ready;
+  return current === name && !blocked($(name));
+}
+
+// ---- player
+
+const TYPE_CONFIG = 1, TYPE_VIDEO = 2, TYPE_SOUND = 3, TYPE_NOTICE = 4;
+const RATE = 48000;
+const SCALE = 1000000;
+const KEY_EVERY = 8 * SCALE;
+const RECORD_LIMIT = 1500 * 1024 * 1024;
+const Source = window.ManagedMediaSource || window.MediaSource;
+
+const video = $('video');
+const stage = $('cast');
+const statusNode = h('div', { id: 'status', 'aria-live': 'polite' }, h('i'), h('span'));
+const recNode = h('span', { id: 'rec', hidden: true });
+const soundButton = iconButton('volumeOff', T.soundOn, toggleSound);
+const recButton = iconButton('record', T.record, toggleRecording);
+const statsButton = iconButton('info', T.stats, toggleStats);
+const tuneButton = iconButton('tune', T.settings, () => ($('sheet').hidden ? openSheet() : closeSheet()));
+
+let media = null, buffer = null, queue = [], parameters = null, init = null;
+let sequence = 1, mediaTime = 0, lastServer = null, started = false, keyAt = null, keyAsked = 0, trimTo = 0;
+let lastAppend = 0, lastAdvance = 0, lastPresented = -1, stalls = 0, rescueUntil = 0;
+let link = null, session = 0, watching = false, retryTimer = 0, leaveTimer = 0;
+let status = 'connecting', notice = null, applying = 0, applyTimer = 0;
+let audio = null, audioTime = 0;
+let recorder = null;
+const meter = { frames: 0, bytes: 0 };
+
+function u32(...values) {
+  const out = new Uint8Array(values.length * 4);
+  const view = new DataView(out.buffer);
+  values.forEach((value, i) => view.setUint32(i * 4, value));
+  return out;
+}
+
+function u16(...values) {
+  const out = new Uint8Array(values.length * 2);
+  const view = new DataView(out.buffer);
+  values.forEach((value, i) => view.setUint16(i * 2, value));
+  return out;
+}
+
+function ascii(text) { return Uint8Array.from(text, c => c.charCodeAt(0)); }
+
+function concat(parts) {
+  const out = new Uint8Array(parts.reduce((sum, part) => sum + part.length, 0));
+  let at = 0;
+  for (const part of parts) { out.set(part, at); at += part.length; }
+  return out;
+}
+
+function box(type, ...parts) {
+  const body = concat(parts);
+  return concat([u32(body.length + 8), ascii(type), body]);
+}
+
+function full(type, versionAndFlags, ...parts) { return box(type, u32(versionAndFlags), ...parts); }
+
+const MATRIX = u32(0x10000, 0, 0, 0, 0x10000, 0, 0, 0, 0x40000000);
+
+function initSegment(sps, pps, width, height) {
+  const avcC = box('avcC',
+    new Uint8Array([1, sps[1], sps[2], sps[3], 0xff, 0xe1]), u16(sps.length), sps,
+    new Uint8Array([1]), u16(pps.length), pps);
+  const avc1 = box('avc1',
+    new Uint8Array(6), u16(1), new Uint8Array(16), u16(width, height),
+    u32(0x480000, 0x480000, 0), u16(1), new Uint8Array(32), u16(0x18, 0xffff), avcC);
+  const stbl = box('stbl',
+    full('stsd', 0, u32(1), avc1), full('stts', 0, u32(0)), full('stsc', 0, u32(0)),
+    full('stsz', 0, u32(0, 0)), full('stco', 0, u32(0)));
+  const minf = box('minf',
+    full('vmhd', 1, u16(0, 0, 0, 0)),
+    box('dinf', full('dref', 0, u32(1), full('url ', 1))), stbl);
+  const mdia = box('mdia',
+    full('mdhd', 0, u32(0, 0, SCALE, 0), u16(0x55c4, 0)),
+    full('hdlr', 0, u32(0), ascii('vide'), u32(0, 0, 0), ascii('video\0')), minf);
+  const trak = box('trak',
+    full('tkhd', 3, u32(0, 0, 1, 0, 0, 0, 0), u16(0, 0, 0, 0), MATRIX, u32(width * 65536, height * 65536)), mdia);
+  const moov = box('moov',
+    full('mvhd', 0, u32(0, 0, SCALE, 0, 0x10000), u16(0x100, 0), u32(0, 0), MATRIX, new Uint8Array(24), u32(2)),
+    trak, box('mvex', full('trex', 0, u32(1, 1, 0, 0, 0))));
+  return concat([box('ftyp', ascii('isom'), u32(0x200), ascii('isom'), ascii('iso6'), ascii('avc1'), ascii('mp41')), moov]);
+}
+
+function mediaSegment(number, time, duration, sample, key) {
+  const trun = full('trun', 0x000701, u32(1, 0, duration, sample.length, key ? 0x02000000 : 0x01010000));
+  const moof = box('moof',
+    full('mfhd', 0, u32(number)),
+    box('traf', full('tfhd', 0x020000, u32(1)), full('tfdt', 0x01000000, u32(Math.floor(time / 4294967296), time >>> 0)), trun));
+  new DataView(moof.buffer).setUint32(moof.length - trun.length + 16, moof.length + 8);
+  return concat([moof, box('mdat', sample)]);
+}
+
+function nalUnits(data) {
+  const units = [];
+  let start = -1;
+  let i = 0;
+  while (i + 2 < data.length) {
+    if (data[i] === 0 && data[i + 1] === 0 && (data[i + 2] === 1 || (data[i + 2] === 0 && data[i + 3] === 1))) {
+      if (start >= 0) units.push(data.subarray(start, i));
+      i += data[i + 2] === 1 ? 3 : 4;
+      start = i;
+    } else {
+      i++;
+    }
+  }
+  if (start >= 0) units.push(data.subarray(start));
+  return units;
+}
+
+function setStatus(next) {
+  status = next;
+  showStatus();
+}
+
+function showStatus() {
+  let text = T[status];
+  if (applying) text = T.applying;
+  else if (notice && notice.code === 2) text = T.trouble + (notice.text ? ': ' + notice.text : '');
+  else if (notice) text = T.starting;
+  statusNode.className = text === T.live ? 'live' : '';
+  statusNode.lastChild.textContent = text;
+}
+
+function resetPlayer() {
+  parameters = null;
+  init = null;
+  buffer = null;
+  queue = [];
+  started = false;
+  lastServer = null;
+  mediaTime = 0;
+  keyAt = null;
+  trimTo = 0;
+  if (!media) return;
+  media = null;
+  URL.revokeObjectURL(video.src);
+  video.removeAttribute('src');
+  video.load();
+}
+
+function configure(width, height, data) {
+  const units = nalUnits(data);
+  const sps = units.find(unit => (unit[0] & 0x1f) === 7);
+  const pps = units.find(unit => (unit[0] & 0x1f) === 8);
+  if (!sps || !pps) return;
+  const signature = `${width}x${height}|${sps.join()}|${pps.join()}`;
+  if (signature === parameters) return;
+
+  const codec = 'avc1.' + [sps[1], sps[2], sps[3]].map(v => v.toString(16).padStart(2, '0')).join('');
+  const mime = `video/mp4; codecs="${codec}"`;
+  if (!Source || !Source.isTypeSupported(mime)) { setStatus('codec'); return; }
+
+  stopRecording();
+  resetPlayer();
+  parameters = signature;
+  init = initSegment(sps, pps, width, height);
+  queue = [init];
+  media = new Source();
+  if (window.ManagedMediaSource) video.disableRemotePlayback = true;
+  video.src = URL.createObjectURL(media);
+  const opened = media;
+  opened.addEventListener('sourceopen', () => {
+    if (media !== opened) return;
+    try {
+      buffer = opened.addSourceBuffer(mime);
+    } catch (error) {
+      setStatus('codec');
+      return;
+    }
+    buffer.mode = 'segments';
+    buffer.addEventListener('updateend', pump);
+    buffer.addEventListener('error', restart);
+    pump();
+  }, { once: true });
+}
+
+function frame(time, data) {
+  if (!parameters) return;
+  const units = nalUnits(data).filter(unit => {
+    const type = unit[0] & 0x1f;
+    return type !== 7 && type !== 8 && type !== 9;
+  });
+  if (!units.length) return;
+  const key = units.some(unit => (unit[0] & 0x1f) === 5);
+  if (!started) {
+    if (!key) return;
+    started = true;
+  }
+  const sample = new Uint8Array(units.reduce((sum, unit) => sum + 4 + unit.length, 0));
+  const view = new DataView(sample.buffer);
+  let at = 0;
+  for (const unit of units) {
+    view.setUint32(at, unit.length);
+    sample.set(unit, at + 4);
+    at += 4 + unit.length;
+  }
+  // The timeline is laid end to end: MSE drops everything up to the next keyframe once a frame lands
+  // more than two durations after the previous one, and the headset sends keyframes only on request.
+  const duration = lastServer === null ? 33333 : Math.min(100000, Math.max(1000, time - lastServer));
+  lastServer = time;
+  queue.push(mediaSegment(sequence++, mediaTime, duration, sample, key));
+  lastAppend = performance.now();
+  // The buffer can only be cut at a keyframe: removing a range takes every frame up to the next one with it.
+  if (key) {
+    if (keyAt !== null) trimTo = keyAt;
+    keyAt = mediaTime;
+  } else if (mediaTime - keyAt > KEY_EVERY && lastAppend - keyAsked > 3000) {
+    keyAsked = lastAppend;
+    api('api/keyframe', {}).catch(() => {});
+  }
+  mediaTime += duration;
+  if (recorder) recordSample(sample, duration, key);
+  meter.frames++;
+  if (applying === 2) {
+    applying = 0;
+    showStatus();
+  }
+  pump();
+}
+
+function pump() {
+  if (!buffer || buffer.updating || !queue.length) return;
+  try {
+    const ranges = buffer.buffered;
+    const cut = trimTo / SCALE - 0.0005;
+    trimTo = 0;
+    if (ranges.length && ranges.start(0) < cut) {
+      buffer.remove(0, cut);
+      return;
+    }
+    const next = queue.length === 1 ? queue[0] : concat(queue);
+    queue = [];
+    buffer.appendBuffer(next);
+  } catch (error) {
+    restart();
+  }
+}
+
+function jumpLive() {
+  const ranges = video.buffered;
+  if (ranges.length) video.currentTime = Math.max(0, ranges.end(ranges.length - 1) - 0.05);
+}
+
+function restart() {
+  if (link) link.abort();
+}
+
+// Our own seeks move currentTime, so progress is counted in frames the decoder actually produced.
+function presented() {
+  return video.getVideoPlaybackQuality ? video.getVideoPlaybackQuality().totalVideoFrames : video.webkitDecodedFrameCount || 0;
+}
+
+setInterval(() => {
+  const now = performance.now();
+  const count = presented();
+  if (count !== lastPresented) {
+    lastPresented = count;
+    lastAdvance = now;
+    stalls = 0;
+  }
+  const ranges = video.buffered;
+  if (buffer && ranges.length) {
+    const start = ranges.start(ranges.length - 1);
+    const end = ranges.end(ranges.length - 1);
+    const lag = end - video.currentTime;
+    // After a stall the decoder does not pick up a range that starts later by itself, the playhead has to be put into it.
+    const outside = video.currentTime < start || (now < rescueUntil && lag < -0.25);
+    if (lag > 0.5 || outside) video.currentTime = Math.max(start, end - 0.05);
+    video.playbackRate = lag > 0.2 ? 1.05 : 1;
+    if (video.paused) video.play().catch(() => {});
+  }
+  if (document.hidden || now - lastAppend > 1000) {
+    lastAdvance = now;
+    return;
+  }
+  if (now - lastAdvance < 2500) return;
+  lastAdvance = now;
+  if (stalls++) {
+    restart();
+  } else {
+    api('api/keyframe', {}).catch(() => {});
+    rescueUntil = now + 2500;
+  }
+}, 250);
+
+setInterval(() => {
+  if (recorder) recNode.textContent = clock((Date.now() - recorder.since) / 1000);
+  if (!$('stats').hidden) {
+    const ranges = video.buffered;
+    const lag = ranges.length ? ranges.end(ranges.length - 1) - video.currentTime : 0;
+    $('stats').textContent = `${video.videoWidth}×${video.videoHeight}\n${meter.frames} ${T.fpsUnit} · ${(meter.bytes * 8 / 1e6).toFixed(1)} ${T.mbit}\n` +
+      `${T.bufferMs} ${Math.max(0, Math.round(lag * 1000))} ${T.ms}`;
+  }
+  meter.frames = 0;
+  meter.bytes = 0;
+}, 1000);
+
+video.addEventListener('playing', () => setStatus('live'));
+video.addEventListener('error', restart);
+video.addEventListener('leavepictureinpicture', settle);
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) return;
+  jumpLive();
+  poll();
+});
+
+function sound(data) {
+  if (!audio || audio.state !== 'running') return;
+  const frames = data.length >> 2;
+  if (!frames) return;
+  const pcm = new DataView(data.buffer, data.byteOffset, frames * 4);
+  const chunk = audio.createBuffer(2, frames, RATE);
+  const left = chunk.getChannelData(0), right = chunk.getChannelData(1);
+  for (let i = 0; i < frames; i++) {
+    left[i] = pcm.getInt16(i * 4, true) / 32768;
+    right[i] = pcm.getInt16(i * 4 + 2, true) / 32768;
+  }
+  const node = audio.createBufferSource();
+  node.buffer = chunk;
+  node.connect(audio.destination);
+  const now = audio.currentTime;
+  if (audioTime < now + 0.02 || audioTime > now + 0.3) audioTime = now + 0.06;
+  node.start(audioTime);
+  audioTime += chunk.duration;
+}
+
+function toggleSound() {
+  if (audio) {
+    audio.close();
+    audio = null;
+  } else {
+    audio = new (window.AudioContext || window.webkitAudioContext)();
+    audio.resume();
+    audioTime = 0;
+  }
+  setGlyph(soundButton, audio ? 'volumeUp' : 'volumeOff', audio ? T.soundOff : T.soundOn);
+  soundButton.classList.toggle('on', !!audio);
+}
+
+function toggleFullscreen() {
+  if (document.fullscreenElement) document.exitFullscreen();
+  else if (stage.requestFullscreen) stage.requestFullscreen();
+  else if (video.webkitEnterFullscreen) video.webkitEnterFullscreen();
+}
+
+function togglePip() {
+  if (document.pictureInPictureElement) document.exitPictureInPicture();
+  else video.requestPictureInPicture().catch(() => toast(T.noPicture));
+}
+
+function toggleStats() {
+  $('stats').hidden = !$('stats').hidden;
+  statsButton.classList.toggle('on', !$('stats').hidden);
+}
+
+function snapshot() {
+  if (!video.videoWidth) { toast(T.noPicture); return; }
+  const canvas = h('canvas', { width: video.videoWidth, height: video.videoHeight });
+  canvas.getContext('2d').drawImage(video, 0, 0);
+  canvas.toBlob(blob => blob && save(blob, stamp() + '.png'), 'image/png');
+}
+
+function clock(seconds) {
+  const whole = Math.floor(seconds);
+  return Math.floor(whole / 60) + ':' + String(whole % 60).padStart(2, '0');
+}
+
+function toggleRecording() {
+  if (recorder) { stopRecording(); return; }
+  if (!init) { toast(T.noPicture); return; }
+  recorder = { parts: [init], size: init.length, time: 0, number: 1, keyed: false, since: Date.now() };
+  api('api/keyframe', {}).catch(() => {});
+  showRecording();
+}
+
+function recordSample(sample, duration, key) {
+  if (!recorder.keyed) {
+    if (!key) return;
+    recorder.keyed = true;
+  }
+  const segment = mediaSegment(recorder.number++, recorder.time, duration, sample, key);
+  recorder.time += duration;
+  recorder.parts.push(segment);
+  recorder.size += segment.length;
+  if (recorder.size < RECORD_LIMIT) return;
+  stopRecording();
+  toast(T.recLimit);
+}
+
+function stopRecording() {
+  if (!recorder) return;
+  const done = recorder;
+  recorder = null;
+  showRecording();
+  if (done.parts.length > 1) save(new Blob(done.parts, { type: 'video/mp4' }), stamp() + '.mp4');
+  else toast(T.recEmpty);
+  settle();
+}
+
+// An open management tab must not keep the encoder running in the headset.
+function settle() {
+  if (current !== 'cast' && !recorder && !document.pictureInPictureElement) watch(false);
+}
+
+function showRecording() {
+  setGlyph(recButton, recorder ? 'stop' : 'record', recorder ? T.stopRecord : T.record);
+  recButton.classList.toggle('rec', !!recorder);
+  recNode.hidden = !recorder;
+  recNode.textContent = '0:00';
+}
+
+function dispatch(type, data) {
+  const view = new DataView(data.buffer, data.byteOffset, data.length);
+  if (type === TYPE_CONFIG) {
+    configure(view.getUint32(0), view.getUint32(4), data.subarray(8));
+    if (applying === 1) applying = 2;
+    if (status !== 'live' && status !== 'codec') setStatus('waiting');
+  } else if (type === TYPE_VIDEO) {
+    meter.bytes += data.length;
+    frame(Number(view.getBigUint64(0)), data.subarray(8));
+  } else if (type === TYPE_SOUND) {
+    sound(data.subarray(8));
+  } else if (type === TYPE_NOTICE && data.length) {
+    notice = data[0] ? { code: data[0], text: new TextDecoder().decode(data.subarray(1)) } : null;
+    showStatus();
+  }
+}
+
+async function connect() {
+  clearTimeout(retryTimer);
+  if (!watching) return;
+  const mine = ++session;
+  const control = link = new AbortController();
+  resetPlayer();
+  notice = null;
+  stalls = 0;
+  setStatus('connecting');
+  let retry = 1500;
+  try {
+    const response = await fetch('stream', { cache: 'no-store', signal: control.signal });
+    if (response.status === 503 || response.status === 401) {
+      setStatus(response.status === 503 ? 'busy' : 'auth');
+      retry = 5000;
+      throw new Error('refused');
+    }
+    if (!response.ok || !response.body) throw new Error('HTTP ' + response.status);
+    setStatus('waiting');
+    const reader = response.body.getReader();
+    let rest = new Uint8Array(0);
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      const data = rest.length ? concat([rest, value]) : value;
+      let at = 0;
+      while (data.length - at >= 5) {
+        const length = new DataView(data.buffer, data.byteOffset + at + 1, 4).getUint32(0);
+        if (data.length - at - 5 < length) break;
+        dispatch(data[at], data.subarray(at + 5, at + 5 + length));
+        at += 5 + length;
+      }
+      rest = data.slice(at);
+    }
+    throw new Error('ended');
+  } catch (error) {
+    if (mine !== session || !watching) return;
+    if (control.signal.aborted) retry = 300;
+    if (status !== 'busy' && status !== 'auth') setStatus('lost');
+    retryTimer = setTimeout(connect, retry);
+  }
+}
+
+function watch(on) {
+  clearTimeout(leaveTimer);
+  if (on === watching) return;
+  watching = on;
+  if (on) {
+    connect();
+    return;
+  }
+  session++;
+  clearTimeout(retryTimer);
+  if (link) link.abort();
+  resetPlayer();
+  setStatus('paused');
+}
+
+// ---- cast settings
+
+function openSheet() {
+  sheetKey = '';
+  $('sheet').hidden = false;
+  tuneButton.classList.add('on');
+  renderSheet();
+}
+
+function closeSheet() {
+  $('sheet').hidden = true;
+  tuneButton.classList.remove('on');
+}
+
+function renderSheet() {
+  const cast = state.cast;
+  const key = JSON.stringify([cast.source, cast.sources, cast.quality, cast.fps, cast.bitRate, cast.rightEye, cast.sound, cast.stabilized]);
+  if (key === sheetKey) return;
+  sheetKey = key;
+  const set = (label, control) => h('div', { class: 'set' }, h('div', { text: label }), control);
+  const flag = (label, value, name) => h('div', { class: 'srow' }, label, toggle(value, on => setCast({ [name]: on }), label));
+  const magic = cast.source === 'MAGIC' || cast.source === 'MAGIC_ADB';
+  $('sheet').replaceChildren(
+    h('div', { class: 'srow' }, h('h2', { text: T.settings }), iconButton('close', T.close, closeSheet)),
+    set(T.source, segmented(cast.sources.map(id => ({ value: id, label: SOURCES[id] || id })), cast.source, value => setCast({ source: value }))),
+    set(T.quality, segmented(cast.qualities.map(item => ({ value: item.id, label: item.id === 'EYE' ? T.eye : item.height + 'p' })), cast.quality,
+      value => setCast({ quality: value }))),
+    set(T.fps, segmented([30, 60].map(value => ({ value, label: String(value) })), cast.fps, value => setCast({ fps: value }))),
+    set(T.bitrate, segmented([0, 4, 8, 12, 20].map(value => ({ value: value * 1000000, label: value ? String(value) : T.auto })), cast.bitRate,
+      value => setCast({ bitRate: value }))),
+    magic && set(T.eyeSide, segmented([{ value: false, label: T.left }, { value: true, label: T.right }], cast.rightEye,
+      value => setCast({ rightEye: value }))),
+    magic && flag(T.stabilized, cast.stabilized, 'stabilized'),
+    flag(T.soundSetting, cast.sound, 'sound'),
+    h('p', { class: 'note', text: T.settingsNote }));
+}
+
+async function setCast(change) {
+  try {
+    const cast = await api('api/cast', change);
+    apply({ ...state, cast });
+    applying = 1;
+    clearTimeout(applyTimer);
+    applyTimer = setTimeout(() => { applying = 0; showStatus(); }, 10000);
+    showStatus();
+  } catch (error) {
+    fail(error);
+    sheetKey = '';
+    renderSheet();
+  }
+}
+
+// ---- apps
+
+const apps = { all: [], query: '', system: false, list: null };
+const installs = transfers(
+  (file, onProgress) => upload('POST', 'api/install', file,
+    { 'Content-Type': 'application/vnd.android.package-archive', 'X-File-Name': encodeURIComponent(file.name) }, onProgress),
+  T.installing, T.installed, () => current === 'apps' && loadApps());
+
+function install(picked) {
+  const packages = picked.filter(file => /\.apk$/i.test(file.name));
+  if (packages.length < picked.length) toast(T.onlyApk);
+  installs.add(packages, file => file.name);
+}
+
+async function openApps() {
+  if (!await entering('apps')) return;
+  const picker = h('input', { type: 'file', accept: '.apk,application/vnd.android.package-archive', multiple: true, hidden: true });
+  picker.addEventListener('change', () => {
+    install([...picker.files]);
+    picker.value = '';
+  });
+  const search = h('input', { class: 'field', type: 'search', placeholder: T.search, 'aria-label': T.search, value: apps.query });
+  search.addEventListener('input', () => {
+    apps.query = search.value;
+    drawApps();
+  });
+  apps.list = h('div', { class: 'list' });
+  $('apps').replaceChildren(
+    h('div', { class: 'toolbar' }, h('h1', { text: T.apps }), h('span', { class: 'grow' }), search,
+      h('label', { class: 'check' }, toggle(apps.system, on => { apps.system = on; drawApps(); }, T.system), T.system),
+      button('filled', T.install, () => picker.click(), 'upload'), picker),
+    h('p', { class: 'note', text: T.installHint }), installs.node, apps.list);
+  loadApps();
+}
+
+async function loadApps() {
+  const list = apps.list;
+  list.replaceChildren(progress());
+  try {
+    apps.all = (await api('api/apps')).apps.sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base' }));
+    drawApps();
+  } catch (error) {
+    showError(list, error, loadApps);
+  }
+}
+
+function drawApps() {
+  const query = apps.query.trim().toLowerCase();
+  const shown = apps.all.filter(app => (apps.system || !app.system) &&
+    (!query || app.label.toLowerCase().includes(query) || app.package.toLowerCase().includes(query)));
+  if (!shown.length) {
+    apps.list.replaceChildren(empty('search', T.noApps));
+    return;
+  }
+  apps.list.replaceChildren(...shown.map(app => {
+    const id = encodeURIComponent(app.package);
+    const image = h('img', { class: 'app-icon', loading: 'lazy', alt: '', src: 'api/icon?package=' + id });
+    image.addEventListener('error', () => { image.style.visibility = 'hidden'; });
+    return h('div', { class: 'row' }, image,
+      h('div', { class: 'row-text' }, h('div', { class: 'row-title', text: app.label }),
+        h('div', { class: 'row-sub', text: app.version ? `${app.package} · ${app.version}` : app.package })),
+      h('div', { class: 'row-actions' },
+        iconButton('play', T.launch, () => appAction('launch', app, T.launched)),
+        iconButton('stop', T.stopApp, () => appAction('stop', app, T.stopped)),
+        h('a', { class: 'ib', href: 'api/apps/apk?package=' + id, download: app.package + '.apk', title: T.apk, 'aria-label': T.apk }, icon('download')),
+        iconButton('delete', T.uninstall, async () => {
+          if (!await ask({ title: T.uninstallAsk(app.label), text: app.package, action: T.uninstall, danger: true })) return;
+          if (await appAction('uninstall', app, T.uninstalled)) loadApps();
+        })));
+  }));
+}
+
+async function appAction(kind, app, done) {
+  try {
+    await api('api/apps/' + kind, { package: app.package });
+    toast(`${app.label}: ${done.toLowerCase()}`);
+    return true;
+  } catch (error) {
+    fail(error);
+    return false;
+  }
+}
+
+// ---- files
+
+const files = { path: '/sdcard', list: null, crumbs: null };
+const uploads = transfers(
+  (item, onProgress) => upload('PUT', 'api/file?path=' + encodeURIComponent(item.path), item.file,
+    { 'Content-Type': 'application/octet-stream' }, onProgress),
+  T.saving, T.uploaded, () => current === 'files' && loadFiles());
+
+const join = (folder, name) => (folder === '/' ? '' : folder) + '/' + name;
+
+function sendFiles(picked) {
+  uploads.add(picked.map(file => ({ file, path: join(files.path, file.name) })), item => item.path);
+}
+
+async function openFiles() {
+  if (!await entering('files')) return;
+  const picker = h('input', { type: 'file', multiple: true, hidden: true });
+  picker.addEventListener('change', () => {
+    sendFiles([...picker.files]);
+    picker.value = '';
+  });
+  files.crumbs = h('div', { class: 'crumbs' });
+  files.list = h('div', { class: 'list' });
+  $('files').replaceChildren(
+    h('div', { class: 'toolbar' }, h('h1', { text: T.files }), h('span', { class: 'grow' }),
+      button('filled', T.upload, () => picker.click(), 'upload'), button('tonal', T.newFolder, newFolder, 'newFolder'),
+      iconButton('refresh', T.refresh, loadFiles), picker),
+    h('div', { class: 'chips' }, QUICK_PATHS.map(([label, path]) => h('button', { class: 'chip', type: 'button', text: label, onclick: () => go(path) }))),
+    files.crumbs, h('p', { class: 'note', text: T.dropHint }), uploads.node, files.list);
+  loadFiles();
+}
+
+function go(path) {
+  files.path = path;
+  loadFiles();
+}
+
+async function loadFiles() {
+  drawCrumbs();
+  const list = files.list;
+  list.replaceChildren(progress());
+  try {
+    const data = await api('api/files?path=' + encodeURIComponent(files.path));
+    files.path = data.path;
+    drawCrumbs();
+    drawFiles(data.entries);
+  } catch (error) {
+    showError(list, error, loadFiles);
+  }
+}
+
+function drawCrumbs() {
+  const parts = files.path.split('/').filter(Boolean);
+  const nodes = [h('button', { class: 'crumb', type: 'button', text: '/', onclick: () => go('/') })];
+  parts.forEach((part, index) => {
+    if (index) nodes.push('/');
+    nodes.push(h('button', { class: 'crumb', type: 'button', text: part, onclick: () => go('/' + parts.slice(0, index + 1).join('/')) }));
+  });
+  files.crumbs.replaceChildren(...nodes);
+}
+
+function drawFiles(entries) {
+  if (!entries.length) {
+    files.list.replaceChildren(empty('folder', T.emptyDir));
+    return;
+  }
+  const sorted = [...entries].sort((a, b) => b.dir - a.dir || a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
+  files.list.replaceChildren(...sorted.map(entry => {
+    const path = join(files.path, entry.name);
+    const date = entry.modified ? new Date(entry.modified * 1000).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '';
+    const link = !entry.dir && h('a', { class: 'ib', href: 'api/file?path=' + encodeURIComponent(path), download: entry.name,
+      title: T.download, 'aria-label': T.download }, icon('download'));
+    const enter = () => (entry.dir ? go(path) : link.click());
+    const row = h('div', { class: 'row click', role: 'button', tabIndex: 0, onclick: enter },
+      icon(entry.dir ? 'folder' : 'file'),
+      h('div', { class: 'row-text' }, h('div', { class: 'row-title', text: entry.name }),
+        h('div', { class: 'row-sub', text: entry.dir ? date : [human(entry.size), date].filter(Boolean).join(' · ') })),
+      h('div', { class: 'row-actions', onclick: event => event.stopPropagation() }, link,
+        iconButton('edit', T.rename, () => rename(entry)), iconButton('delete', T.del, () => remove(entry))));
+    row.addEventListener('keydown', event => event.target === row && event.key === 'Enter' && enter());
+    return row;
+  }));
+}
+
+async function change(endpoint, body) {
+  try {
+    await api('api/files/' + endpoint, body);
+    loadFiles();
+  } catch (error) {
+    fail(error);
+  }
+}
+
+async function newFolder() {
+  const name = await ask({ title: T.newFolder, input: '', action: T.create });
+  if (!name) return;
+  if (name.includes('/')) { toast(T.badName); return; }
+  change('mkdir', { path: join(files.path, name) });
+}
+
+async function rename(entry) {
+  const name = await ask({ title: T.rename, input: entry.name, action: T.rename });
+  if (!name || name === entry.name) return;
+  if (name.includes('/')) { toast(T.badName); return; }
+  change('rename', { from: join(files.path, entry.name), to: join(files.path, name) });
+}
+
+async function remove(entry) {
+  const sure = await ask({ title: T.deleteAsk(entry.name), text: entry.dir ? T.deleteDir : T.deleteFile, action: T.del, danger: true });
+  if (sure) change('delete', { path: join(files.path, entry.name) });
+}
+
+// ---- console
+
+const shell = { log: [], history: [], at: 0, busy: false, out: null, input: null };
+try { shell.history = JSON.parse(sessionStorage.getItem('notivisor.shell')) || []; } catch (error) {}
+
+async function openShell() {
+  if (!await entering('shell')) return;
+  if (state.adb !== 'READY') {
+    $('shell').replaceChildren(h('div', { class: 'toolbar' }, h('h1', { text: T.shell })), h('div', { class: 'list' }, adbHelp(state.adb)));
+    return;
+  }
+  const head = h('div', { class: 'toolbar' }, h('h1', { text: T.shell }), h('span', { class: 'grow' }),
+    button('text', T.clear, () => { shell.log = []; shell.out.replaceChildren(); }));
+  shell.out = h('div', { class: 'term', tabIndex: 0 }, shell.log.map(entryNode));
+  shell.input = h('input', { type: 'text', placeholder: T.command, 'aria-label': T.command, autocomplete: 'off', autocapitalize: 'off' });
+  shell.input.spellcheck = false;
+  shell.input.addEventListener('keydown', event => {
+    if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+    event.preventDefault();
+    shell.at = Math.min(shell.history.length, Math.max(0, shell.at + (event.key === 'ArrowUp' ? -1 : 1)));
+    shell.input.value = shell.history[shell.at] || '';
+  });
+  $('shell').replaceChildren(head,
+    h('p', { class: 'note', text: T.shellNote }),
+    h('div', { class: 'chips' }, QUICK_COMMANDS.map(command => h('button', { class: 'chip mono', type: 'button', text: command, onclick: () => run(command) }))),
+    shell.out,
+    h('form', { class: 'term-line', onsubmit: event => { event.preventDefault(); run(shell.input.value); } },
+      '$', shell.input, h('button', { class: 'btn filled', type: 'submit', text: T.run })));
+  shell.out.scrollTop = shell.out.scrollHeight;
+  shell.at = shell.history.length;
+}
+
+function entryNode(entry) {
+  return h('div', null, h('div', { class: 'cmd', text: '$ ' + entry.command }), entry.output,
+    entry.exit ? h('div', { class: 'exit', text: `${T.exitCode} ${entry.exit}` }) : null);
+}
+
+async function run(text) {
+  const command = text.trim();
+  if (!command || shell.busy) return;
+  shell.history = shell.history.filter(item => item !== command).concat(command).slice(-50);
+  shell.at = shell.history.length;
+  try { sessionStorage.setItem('notivisor.shell', JSON.stringify(shell.history)); } catch (error) {}
+  shell.busy = true;
+  shell.input.value = '';
+  const entry = { command, output: '', exit: 0 };
+  const waiting = h('div', null, h('div', { class: 'cmd', text: '$ ' + command }), progress());
+  shell.out.append(waiting);
+  shell.out.scrollTop = shell.out.scrollHeight;
+  try {
+    const result = await api('api/shell', { command });
+    entry.output = result.output;
+    entry.exit = result.exit;
+  } catch (error) {
+    entry.output = describe(error);
+    entry.exit = -1;
+  }
+  shell.busy = false;
+  shell.log = shell.log.concat(entry).slice(-200);
+  waiting.replaceWith(entryNode(entry));
+  shell.out.scrollTop = shell.out.scrollHeight;
+}
+
+// ---- device
+
+const device = { url: '', text: '', info: null, adb: null, adbKey: '', prox: null, proxNote: null, log: null };
+
+async function openDevice() {
+  if (!await entering('device')) return;
+  const url = h('input', { class: 'field', type: 'text', inputMode: 'url', placeholder: 'https://', 'aria-label': T.urlHint, value: device.url });
+  url.addEventListener('input', () => { device.url = url.value; });
+  const text = h('input', { class: 'field', type: 'text', placeholder: T.textHint, 'aria-label': T.textHint, value: device.text });
+  text.addEventListener('input', () => { device.text = text.value; });
+  device.info = h('div', { class: 'card' });
+  device.adb = h('div', { class: 'card' });
+  device.adbKey = '';
+  device.prox = toggle(false, setProximity, T.proximity);
+  device.proxNote = h('div', { class: 'row-sub wrap' });
+  device.log = h('pre', { class: 'log' });
+  $('device').replaceChildren(
+    h('div', { class: 'toolbar' }, h('h1', { text: T.device })),
+    h('div', { class: 'cards' },
+      device.info,
+      h('div', { class: 'card' }, h('h2', { text: T.actions }),
+        h('div', { class: 'line' },
+          button('tonal', T.volumeDown, () => press('VOLUME_DOWN'), 'volumeDown'), button('tonal', T.volumeUp, () => press('VOLUME_UP'), 'volumeUp'),
+          button('tonal', T.home, () => press('HOME'), 'home'), button('tonal', T.back, () => press('BACK'), 'back')),
+        h('div', { class: 'srow' }, h('div', { class: 'row-text' }, T.proximity, device.proxNote), device.prox),
+        h('div', { class: 'line' }, button('tonal', T.screenshot, screenshot, 'camera')),
+        h('form', { class: 'line', onsubmit: event => { event.preventDefault(); openUrl(url.value); } }, url,
+          h('button', { class: 'btn tonal', type: 'submit', text: T.open })),
+        h('div', { class: 'line' }, text, button('tonal', T.type, () => sendText('api/input', text.value)),
+          button('text', T.toClipboard, () => sendText('api/clipboard', text.value))),
+        h('div', { class: 'line' }, button('outlined danger', T.reboot, reboot, 'power'))),
+      device.adb,
+      h('div', { class: 'card' },
+        h('div', { class: 'srow' }, h('h2', { text: T.log }),
+          h('div', null, iconButton('refresh', T.refresh, loadLog), iconButton('copy', T.copy, () => copyText(device.log.textContent)))),
+        device.log)));
+  refreshDevice();
+  loadLog();
+}
+
+function refreshDevice() {
+  if (!state || !state.control || !device.info || !device.info.isConnected) return;
+  const pair = (name, value) => [h('dt', { text: name }), h('dd', { text: value })];
+  const storage = state.storage;
+  device.info.replaceChildren(h('h2', { text: T.info }),
+    h('dl', { class: 'kv' }, pair(T.model, state.device.name), pair('Android', state.device.android), pair('Notivisor', state.device.app),
+      pair(T.address, state.device.address), pair(T.battery, state.battery.level + '%' + (state.battery.charging ? ', ' + T.charging : '')),
+      pair(T.storage, T.free(human(storage.free), human(storage.total)))),
+    progress(storage.total ? 1 - storage.free / storage.total : 0));
+  if (device.adbKey !== state.adb) {
+    device.adbKey = state.adb;
+    device.adb.replaceChildren(h('h2', { text: T.adbTitle }), state.adb === 'READY'
+      ? h('div', { class: 'srow' }, h('div', { class: 'row-text' }, h('div', { class: 'ok', text: T.adbReady }),
+        h('div', { class: 'row-sub wrap', text: T.adbReadyText })), iconButton('refresh', T.adbCheck, checkAdb))
+      : adbHelp(state.adb));
+  }
+  device.prox.setAttribute('aria-checked', String(state.proximityOff === true));
+  device.proxNote.textContent = state.proximityOff === true ? T.proxOn : state.proximityOff === false ? T.proxOff : T.proxUnknown;
+}
+
+async function act(path, body, done) {
+  try {
+    await api(path, body);
+    if (done) toast(done);
+  } catch (error) {
+    fail(error);
+  }
+}
+
+const press = key => act('api/input', { key });
+
+async function setProximity(off) {
+  let now = state.proximityOff;
+  try {
+    now = (await api('api/proximity', { off })).proximityOff;
+  } catch (error) {
+    fail(error);
+  }
+  apply({ ...state, proximityOff: now });
+}
+
+function openUrl(value) {
+  const url = value.trim();
+  if (url) act('api/open', { url: /^[a-z][a-z0-9+.-]*:/i.test(url) ? url : 'https://' + url }, T.sent);
+}
+
+function sendText(path, value) {
+  if (value) act(path, { text: value }, T.sent);
+}
+
+async function reboot() {
+  if (await ask({ title: T.rebootAsk, text: T.rebootText, action: T.reboot, danger: true })) act('api/power', { action: 'reboot' }, T.rebooting);
+}
+
+async function screenshot() {
+  try {
+    const response = await check(await fetch('api/screenshot', { cache: 'no-store' }));
+    const url = URL.createObjectURL(await response.blob());
+    await ask({ title: T.screenshot, dismiss: T.close,
+      body: [h('img', { src: url, alt: '' }), h('a', { class: 'btn tonal', href: url, download: stamp() + '.png' }, icon('download'), T.download)] });
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    fail(error);
+  }
+}
+
+async function loadLog() {
+  try {
+    device.log.textContent = (await api('api/log')).lines.join('\n');
+    device.log.scrollTop = device.log.scrollHeight;
+  } catch (error) {
+    device.log.textContent = describe(error);
+  }
+}
+
+// ---- shell of the page
+
+const openers = { apps: openApps, files: openFiles, shell: openShell, device: openDevice };
+const tabs = {};
+
+function route() {
+  const wanted = location.hash.slice(1);
+  current = SECTIONS.includes(wanted) ? wanted : 'cast';
+  for (const id of SECTIONS) {
+    $(id).classList.toggle('active', id === current);
+    tabs[id].setAttribute('aria-current', id === current ? 'page' : 'false');
+  }
+  if (current === 'cast') {
+    watch(true);
+    wake();
+    return;
+  }
+  clearTimeout(leaveTimer);
+  if (watching) leaveTimer = setTimeout(settle, 10000);
+  openers[current]();
+}
+
+let idleTimer = 0;
+function wake() {
+  stage.classList.remove('idle');
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(() => $('sheet').hidden && stage.classList.add('idle'), 3000);
+}
+
+for (const id of SECTIONS) {
+  tabs[id] = h('button', { type: 'button', onclick: () => { location.hash = id; } }, h('i', null, icon(SECTION_ICONS[id])), T[id]);
+  $('nav').append(tabs[id]);
+}
+
+$('bar').append(...[statusNode, recNode, soundButton, iconButton('camera', T.snapshot, snapshot), recButton,
+  document.pictureInPictureEnabled && iconButton('pip', T.pip, togglePip), statsButton, tuneButton,
+  iconButton('fullscreen', T.fullscreen, toggleFullscreen)].filter(Boolean));
+tuneButton.hidden = true;
+
+['mousemove', 'touchstart', 'click'].forEach(name => stage.addEventListener(name, wake));
+video.addEventListener('dblclick', toggleFullscreen);
+document.addEventListener('keydown', event => {
+  if (current !== 'cast' || event.ctrlKey || event.metaKey || event.altKey || /^(INPUT|TEXTAREA|SELECT)$/.test(event.target.tagName)) return;
+  wake();
+  const key = event.key.toLowerCase();
+  if (key === 'f' || key === 'а') toggleFullscreen();
+  else if (key === 'm' || key === 'ь') toggleSound();
+  else if (key === 'i' || key === 'ш') toggleStats();
+});
+
+dropZone($('apps'), install);
+dropZone($('files'), sendFiles);
+window.addEventListener('hashchange', route);
+setInterval(poll, 3000);
+showStatus();
+renderTop();
+route();
+poll();
+</script>
+</body>
+</html>

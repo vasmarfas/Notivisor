@@ -61,4 +61,55 @@
     <string name="copy_failed">Could not reach the clipboard</string>
 
     <string name="quit_message_headset">The connection closes and notifications stop arriving until you open the app again.</string>
+
+    <string name="section_cast_headset">Casting this headset</string>
+    <string name="cast_quality">Resolution</string>
+    <string name="cast_quality_eye">Eye</string>
+    <string name="cast_fps">Frames per second</string>
+    <string name="cast_bit_rate">Bitrate, Mbit/s</string>
+    <string name="cast_bit_rate_auto">Auto</string>
+    <string name="cast_eye_left">Left eye</string>
+    <string name="cast_eye_right">Right eye</string>
+    <string name="setting_cast_stabilized">Stabilize the picture</string>
+    <string name="setting_cast_stabilized_hint">Smooths small head turns for viewers</string>
+    <string name="setting_cast_sound">Sound</string>
+    <string name="cast_settings_next_start">In capture mode new settings apply after casting stops</string>
+    <string name="cast_settings_live">Settings apply at once, the picture is back in a couple of seconds</string>
+    <string name="cast_error_no_service">The Quest casting service did not answer</string>
+    <string name="cast_error_no_scrcpy">scrcpy did not start on the headset</string>
+    <string name="cast_error_no_projection">Screen capture was not allowed</string>
+    <string name="cast_error_stalled">The headset stopped sending the picture</string>
+    <string name="cast_error_adb_offline">The headset\'s adb is not listening on the network. Connect the headset to a computer and run adb tcpip 5555</string>
+    <string name="cast_error_adb_unauthorized">The headset is waiting for consent: put it on and choose \"Always allow\" in the \"Allow USB debugging?\" window</string>
+    <string name="cast_trouble">No picture: %1$s. Trying again, no need to reload the page.</string>
+
+    <string name="section_adb">The headset\'s adb</string>
+    <string name="section_adb_hint">Needed by the \"Quest + adb\" and scrcpy modes, the proximity sensor button, text pasting and management from a browser</string>
+    <string name="adb_ready">Ready</string>
+    <string name="adb_ready_kept">Ready. After a reboot the app turns debugging back on by itself</string>
+    <string name="adb_offline">Not set up</string>
+    <string name="adb_dormant">Off, turns on by itself</string>
+    <string name="adb_dormant_hint">After a reboot adb is off. The app turns it on the first time it is needed or when you tap \"Check\". If the headset asks about wireless debugging on this network, choose \"Always allow on this network\".</string>
+    <string name="adb_unauthorized">Waiting for consent in the headset</string>
+    <string name="adb_checking">Checking…</string>
+    <string name="adb_unknown">Not checked yet</string>
+    <string name="adb_steps">1. Connect the headset to a computer by cable and run: adb tcpip 5555\n2. Tap \"Check\" and choose \"Always allow from this computer\" in the headset.\n\nThe computer is needed once. After that the app turns wireless debugging on by itself after every reboot, and on a new Wi-Fi network the headset asks for consent one time.</string>
+    <string name="adb_step_allow">Put the headset on, choose \"Always allow from this computer\" in the \"Allow USB debugging?\" window, then tap \"Check\".</string>
+    <string name="action_check_adb">Check</string>
+
+    <string name="section_cast_web">The headset in a browser</string>
+    <string name="section_cast_web_hint">Any phone, PC or TV on the same Wi-Fi opens the address in a browser, no app needed</string>
+    <string name="cast_web_viewers">Watching now: %1$d</string>
+    <string name="cast_web_qr">QR code with the page address</string>
+    <string name="cast_no_address">The headset has no Wi-Fi address</string>
+    <string name="setting_cast_password">Ask for a password</string>
+    <string name="setting_cast_password_off">Anyone on this Wi-Fi can watch</string>
+    <string name="cast_password">Password %1$s, any user name</string>
+    <string name="action_new_password">New password</string>
+    <string name="setting_web_control">Management from the browser</string>
+    <string name="setting_web_control_hint">APK installs, files, an adb console and cast settings right on the page. Works only with a password</string>
+    <string name="setting_web_autostart">Turn on together with the app</string>
+    <string name="setting_web_autostart_hint">The page is always there. Capture starts when someone opens it and stops when everyone has left</string>
+    <string name="cast_web_port">Port</string>
+    <string name="cast_web_port_busy">port %1$d is taken by another app</string>
 </resources>

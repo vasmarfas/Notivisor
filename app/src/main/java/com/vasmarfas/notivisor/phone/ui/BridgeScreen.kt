@@ -6,8 +6,6 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.media.projection.MediaProjectionManager
-import android.net.ConnectivityManager
-import android.net.NetworkCapabilities
 import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings
@@ -90,6 +88,7 @@ import com.vasmarfas.notivisor.core.transport.LocalNetwork
 import com.vasmarfas.notivisor.core.transport.TransportKind
 import com.vasmarfas.notivisor.core.transport.ble.BlePermissions
 import com.vasmarfas.notivisor.core.ui.AboutCard
+import com.vasmarfas.notivisor.core.ui.ButtonRow
 import com.vasmarfas.notivisor.core.ui.ChecklistRow
 import com.vasmarfas.notivisor.core.ui.HealthTone
 import com.vasmarfas.notivisor.core.ui.LogPanel
@@ -100,7 +99,10 @@ import com.vasmarfas.notivisor.core.ui.SettingRow
 import com.vasmarfas.notivisor.core.ui.StatRow
 import com.vasmarfas.notivisor.core.ui.StatusBanner
 import com.vasmarfas.notivisor.core.ui.VersionNotice
+import com.vasmarfas.notivisor.core.ui.castSourceHint
+import com.vasmarfas.notivisor.core.ui.castSourceLabel
 import com.vasmarfas.notivisor.core.util.BridgeLog
+import com.vasmarfas.notivisor.core.util.localAddress
 import com.vasmarfas.notivisor.phone.core.DoNotDisturb
 import com.vasmarfas.notivisor.phone.core.HeadsetStatus
 import com.vasmarfas.notivisor.phone.core.PhoneBridge
@@ -111,8 +113,6 @@ import com.vasmarfas.notivisor.phone.service.ShizukuInput
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.net.Inet4Address
-import java.net.NetworkInterface
 import java.util.concurrent.TimeUnit
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -301,10 +301,9 @@ fun BridgeScreen() {
                 item { VersionNotice(peer) }
 
                 item {
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    ButtonRow {
                         Button(
                             onClick = { PhoneBridge.sendTest() },
-                            modifier = Modifier.weight(1f),
                         ) { Text(stringResource(R.string.action_test)) }
                         OutlinedButton(
                             onClick = {
@@ -312,7 +311,6 @@ fun BridgeScreen() {
                                     Pairing.generateCode()
                                 showPairing = true
                             },
-                            modifier = Modifier.weight(1f),
                         ) { Text(stringResource(R.string.action_pair)) }
                     }
                 }
@@ -322,16 +320,14 @@ fun BridgeScreen() {
                         title = stringResource(R.string.section_headset),
                         subtitle = headset.describe(context),
                     ) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        ButtonRow {
                             OutlinedButton(
                                 onClick = { PhoneBridge.sendClipboard() },
                                 enabled = linkState.isConnected,
-                                modifier = Modifier.weight(1f),
                             ) { Text(stringResource(R.string.action_send_clipboard)) }
                             OutlinedButton(
                                 onClick = { PhoneBridge.findHeadset() },
                                 enabled = linkState.isConnected,
-                                modifier = Modifier.weight(1f),
                             ) { Text(stringResource(R.string.action_find_headset)) }
                         }
 
@@ -404,7 +400,7 @@ fun BridgeScreen() {
                                 overflow = TextOverflow.Ellipsis,
                             )
                         }
-                        Row {
+                        ButtonRow {
                             TextButton(onClick = { showLog = !showLog }) {
                                 Text(
                                     stringResource(if (showLog) R.string.action_hide_log else R.string.action_show_log)
@@ -605,28 +601,17 @@ fun BridgeScreen() {
                         val sensorOff = headset.proximitySensorOff
 
                         SegmentedChoice(
-                            options = listOf(CastSource.MAGIC, CastSource.SCRCPY),
+                            options = listOf(CastSource.MAGIC, CastSource.MAGIC_ADB, CastSource.SCRCPY),
                             selected = source,
-                            label = {
-                                stringResource(
-                                    if (it == CastSource.MAGIC) R.string.cast_source_magic
-                                    else R.string.cast_source_scrcpy
-                                )
-                            },
+                            label = { stringResource(castSourceLabel(it)) },
                             onSelect = { settings.castSource = it },
                         )
                         Text(
-                            stringResource(
-                                if (source == CastSource.MAGIC) R.string.cast_source_magic_hint
-                                else R.string.cast_source_scrcpy_hint
-                            ),
+                            stringResource(castSourceHint(source)),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
+                        ButtonRow {
                             Button(
                                 onClick = { CastActivity.open(context) },
                                 enabled = linkState.isConnected,
@@ -941,28 +926,3 @@ private fun requestIgnoreBattery(context: Context) {
         )
     }
 }
-
-private fun localAddress(context: Context): String? = runCatching {
-    val manager = context.getSystemService(ConnectivityManager::class.java) ?: return@runCatching null
-    @Suppress("DEPRECATION")
-    val networks = manager.allNetworks.toList()
-    val wifi = networks.firstOrNull { network ->
-        val capabilities = manager.getNetworkCapabilities(network) ?: return@firstOrNull false
-        capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) &&
-                capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN)
-    }
-    val wifiAddress = wifi?.let { manager.getLinkProperties(it) }
-        ?.linkAddresses
-        ?.map { it.address }
-        ?.firstOrNull { it is Inet4Address }
-    if (wifiAddress != null) return@runCatching wifiAddress.hostAddress
-
-    val claimed = networks.mapNotNull { manager.getLinkProperties(it)?.interfaceName }.toSet()
-    NetworkInterface.getNetworkInterfaces()
-        .toList()
-        .filter { it.isUp && !it.isLoopback && it.name !in claimed }
-        .flatMap { it.inetAddresses.toList() }
-        .filterIsInstance<Inet4Address>()
-        .firstOrNull { it.isSiteLocalAddress }
-        ?.hostAddress
-}.getOrNull()

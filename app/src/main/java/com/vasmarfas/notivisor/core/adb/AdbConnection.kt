@@ -1,17 +1,21 @@
 package com.vasmarfas.notivisor.core.adb
 
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
 import android.os.Build
+import android.provider.Settings
 import com.vasmarfas.notivisor.core.util.BridgeLog
+import dadb.Dadb
 import io.github.muntashirakon.adb.AbsAdbConnectionManager
 import java.net.InetSocketAddress
 import java.net.Socket
 import java.security.PrivateKey
 import java.security.cert.Certificate
 
-class AdbConnection private constructor(context: Context) : AbsAdbConnectionManager() {
+enum class AdbAccess { READY, UNAUTHORIZED, OFFLINE }
 
-    private val material = AdbIdentity.tlsMaterial(context)
+class AdbConnection private constructor(private val material: AdbIdentity.Material) : AbsAdbConnectionManager() {
 
     init {
         api = Build.VERSION.SDK_INT
@@ -31,13 +35,15 @@ class AdbConnection private constructor(context: Context) : AbsAdbConnectionMana
         private const val PROBE_TIMEOUT_MS = 600
         private const val WAIT_TRIES = 20
         private const val WAIT_STEP_MS = 250L
+        private const val WIRELESS_SETTING = "adb_wifi_enabled"
 
-        @Volatile
-        private var instance: AdbConnection? = null
+        private var instances: List<AdbConnection>? = null
 
         @Synchronized
-        fun getInstance(context: Context): AdbConnection =
-            instance ?: AdbConnection(context.applicationContext).also { instance = it }
+        private fun managers(context: Context): List<AdbConnection> =
+            instances ?: AdbIdentity.identities(context.applicationContext)
+                .map(::AdbConnection)
+                .also { instances = it }
 
         fun pair(context: Context, code: String): Boolean {
             val service = AdbMdns.discover(context, AdbMdns.TLS_PAIRING, PAIRING_DISCOVERY_MS)
@@ -47,7 +53,7 @@ class AdbConnection private constructor(context: Context) : AbsAdbConnectionMana
             }
             val host = service.host.hostAddress ?: return false
             return runCatching {
-                getInstance(context).pair(host, service.port, code)
+                managers(context).first().pair(host, service.port, code)
             }.onFailure {
                 BridgeLog.w(SCOPE, "pairing rejected: ${it.message}")
             }.getOrDefault(false).also {
@@ -55,12 +61,13 @@ class AdbConnection private constructor(context: Context) : AbsAdbConnectionMana
             }
         }
 
-        fun resolvePort(context: Context): Int? {
+        fun resolvePort(context: Context, wake: Boolean = true): Int? {
 
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R || !wake) {
                 return TCPIP_PORT.takeIf { isAlive(it) }
             }
             if (isAlive(TCPIP_PORT)) return TCPIP_PORT
+            enableWireless(context)
             if (!switchToTcpip(context)) return null
             repeat(WAIT_TRIES) {
                 if (isAlive(TCPIP_PORT)) {
@@ -73,25 +80,61 @@ class AdbConnection private constructor(context: Context) : AbsAdbConnectionMana
             return null
         }
 
-        private fun switchToTcpip(context: Context): Boolean = runCatching {
-            val manager = getInstance(context)
-            if (!manager.isConnected) {
-                val connected = runCatching { manager.autoConnect(context, AUTO_CONNECT_MS) }
-                    .getOrElse {
-                        BridgeLog.w(SCOPE, "tls connect failed, is it paired? ${it.message}")
-                        false
-                    }
-                if (!connected) return false
+        fun access(context: Context, wake: Boolean = true): AdbAccess {
+            val port = resolvePort(context, wake) ?: return AdbAccess.OFFLINE
+            return runCatching {
+                Dadb.create(LOOPBACK, port, AdbIdentity.keyPair(context), PROBE_TIMEOUT_MS, AUTH_TIMEOUT_MS).use {
+                    it.shell("true")
+                    keep(context, it)
+                }
+                AdbAccess.READY
+            }.getOrElse {
+                BridgeLog.w(SCOPE, "adbd did not accept our key: ${it.message}")
+                AdbAccess.UNAUTHORIZED
             }
+        }
+
+        fun open(context: Context, timeoutMs: Int): Dadb =
+            Dadb.create(LOOPBACK, TCPIP_PORT, AdbIdentity.keyPair(context), PROBE_TIMEOUT_MS, timeoutMs)
+
+        fun keep(context: Context, shell: Dadb) {
+            if (canEnableWireless(context)) return
+            runCatching { shell.shell("pm grant ${context.packageName} ${Manifest.permission.WRITE_SECURE_SETTINGS}") }
+                .onSuccess { BridgeLog.i(SCOPE, "wireless debugging can now be switched on without a computer") }
+        }
+
+        fun canEnableWireless(context: Context): Boolean =
+            context.checkSelfPermission(Manifest.permission.WRITE_SECURE_SETTINGS) == PackageManager.PERMISSION_GRANTED
+
+        private fun enableWireless(context: Context) {
+            if (!canEnableWireless(context)) return
+            val resolver = context.contentResolver
+            if (Settings.Global.getInt(resolver, WIRELESS_SETTING, 0) == 1) return
+            runCatching { Settings.Global.putInt(resolver, WIRELESS_SETTING, 1) }
+                .onSuccess { BridgeLog.i(SCOPE, "switched wireless debugging on") }
+                .onFailure { BridgeLog.w(SCOPE, "could not switch wireless debugging on: ${it.message}") }
+        }
+
+        private fun switchToTcpip(context: Context): Boolean {
+            val service = AdbMdns.discover(context, AdbMdns.TLS_CONNECT, AUTO_CONNECT_MS) ?: run {
+                BridgeLog.w(SCOPE, "wireless debugging is not advertised on this device")
+                return false
+            }
+            return managers(context).any { manager ->
+                runCatching { manager.switchToTcpip(service.port) }
+                    .onFailure { BridgeLog.w(SCOPE, "tls connect failed, is the key known? $it") }
+                    .getOrDefault(false)
+            }
+        }
+
+        private fun AdbConnection.switchToTcpip(port: Int): Boolean {
+            if (!connect(LOOPBACK, port)) return false
             BridgeLog.i(SCOPE, "asking adbd for tcpip:$TCPIP_PORT over tls")
-            val stream = manager.openStream("tcpip:$TCPIP_PORT")
+            val stream = openStream("tcpip:$TCPIP_PORT")
             runCatching { stream.openInputStream().readBytes() }
             runCatching { stream.close() }
-            runCatching { manager.disconnect() }
-            true
-        }.getOrElse {
-            BridgeLog.w(SCOPE, "tcpip switch failed: ${it.message}")
-            false
+            runCatching { disconnect() }
+            return true
         }
 
         private fun isAlive(port: Int): Boolean = runCatching {
@@ -101,5 +144,6 @@ class AdbConnection private constructor(context: Context) : AbsAdbConnectionMana
 
         private const val AUTO_CONNECT_MS = 8_000L
         private const val PAIRING_DISCOVERY_MS = 8_000L
+        private const val AUTH_TIMEOUT_MS = 20_000
     }
 }

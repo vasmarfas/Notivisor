@@ -19,12 +19,14 @@ import android.sun.security.x509.X509CertInfo
 import dadb.AdbKeyPair
 import java.io.File
 import java.security.KeyFactory
-import java.security.KeyPairGenerator
+import java.security.KeyPair
 import java.security.PrivateKey
-import java.security.SecureRandom
 import java.security.cert.Certificate
 import java.security.cert.CertificateFactory
+import java.security.interfaces.RSAPrivateCrtKey
 import java.security.spec.PKCS8EncodedKeySpec
+import java.security.spec.RSAPublicKeySpec
+import java.util.Base64
 import java.util.Date
 import java.util.Random
 
@@ -38,6 +40,8 @@ object AdbIdentity {
 
     data class Material(val privateKey: PrivateKey, val certificate: Certificate)
 
+    private var shared: Material? = null
+
     @Synchronized
     fun keyPair(context: Context): AdbKeyPair {
         val privateKey = File(context.filesDir, RSA_PRIVATE)
@@ -49,15 +53,10 @@ object AdbIdentity {
     }
 
     @Synchronized
-    fun tlsMaterial(context: Context): Material {
-        val keyFile = File(context.filesDir, TLS_KEY)
-        val certFile = File(context.filesDir, TLS_CERT)
-        readTls(keyFile, certFile)?.let { return it }
-
-        val material = generateTls()
-        keyFile.writeBytes(material.privateKey.encoded)
-        certFile.writeBytes(material.certificate.encoded)
-        return material
+    fun identities(context: Context): List<Material> {
+        val paired = readTls(File(context.filesDir, TLS_KEY), File(context.filesDir, TLS_CERT))
+        val own = shared ?: certify(rsaPair(context)).also { shared = it }
+        return listOfNotNull(paired.takeIf { it?.certificate?.publicKey != own.certificate.publicKey }, own)
     }
 
     private fun readTls(keyFile: File, certFile: File): Material? {
@@ -72,11 +71,18 @@ object AdbIdentity {
         }.getOrNull()
     }
 
-    private fun generateTls(): Material {
-        val pair = KeyPairGenerator.getInstance("RSA").apply {
-            initialize(2048, SecureRandom.getInstance("SHA1PRNG"))
-        }.generateKeyPair()
+    private fun rsaPair(context: Context): KeyPair {
+        keyPair(context)
+        val encoded = File(context.filesDir, RSA_PRIVATE).readLines()
+            .filterNot { it.startsWith("-----") }
+            .joinToString("")
+        val factory = KeyFactory.getInstance("RSA")
+        val private = factory.generatePrivate(PKCS8EncodedKeySpec(Base64.getDecoder().decode(encoded)))
+                as RSAPrivateCrtKey
+        return KeyPair(factory.generatePublic(RSAPublicKeySpec(private.modulus, private.publicExponent)), private)
+    }
 
+    private fun certify(pair: KeyPair): Material {
         val notBefore = Date()
         val notAfter = Date(System.currentTimeMillis() + TEN_YEARS_MS)
         val name = X500Name("CN=Notivisor")

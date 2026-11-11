@@ -32,6 +32,14 @@ where nothing else can.
 - **One-time codes** get a copy button, so a login code arriving mid-session isn't a reason to stop
 - **Messages read as a conversation**, not five separate pop-ups, when the source app supports it
 - **See your phone's screen inside the headset**, view-only, over Wi-Fi — no ADB, no cable
+- **Watch the headset from the phone or from any browser** on the same Wi-Fi, with sound. On Quest
+  it uses Horizon OS's own casting and needs neither adb nor a PC; on Pico it uses Android screen
+  capture. Resolution, frame rate, bitrate and eye change on the fly, and the browser view can ask
+  for a password
+- **Manage the headset from that same page**: drop an APK to install it, launch and remove apps,
+  move files, run adb shell commands, take a screenshot. Off by default and tied to the password;
+  most of it needs the headset's own adb, which takes one command from a PC to set up and then
+  survives reboots
 - **Type with your phone's keyboard instead of pointing at letters** — write on the phone,
   autocorrect and swipe included, and it arrives in the headset ready to paste into any field. On
   headsets that let you switch keyboards, focusing a field asks the phone for text by itself
@@ -117,6 +125,12 @@ Notification text goes from your phone to your headset and nowhere else. No acco
 no network calls beyond the direct link. That link is encrypted with AES-256-GCM under a key derived
 from your pairing code, so being in Bluetooth range is not enough to read anything. Details in
 [`privacy-policy.md`](privacy-policy.md).
+
+The browser view is the one exception, and only while you keep it on: the headset then serves its
+picture and sound over plain HTTP to browsers on the same Wi-Fi network. That stream is not
+encrypted, so turn on the password when other people share the network. Management from the browser
+is a separate switch: whoever knows the password gets the headset's adb shell, and the password
+itself goes over plain HTTP, so keep it for a network you trust.
 
 ## Contributing
 

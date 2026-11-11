@@ -38,7 +38,7 @@ object ScrcpySession {
     fun isAvailable(context: Context): Boolean = AdbConnection.resolvePort(context) != null
 
     @Synchronized
-    fun start(context: Context, wantVideo: Boolean, maxSize: Int = 0): Boolean = runCatching {
+    fun start(context: Context, wantVideo: Boolean, maxSize: Int = 0, videoOptions: String = ""): Boolean = runCatching {
         close()
         val port = AdbConnection.resolvePort(context) ?: run {
             BridgeLog.w(SCOPE, "no reachable adb port; wireless debugging off or unpaired")
@@ -52,11 +52,13 @@ object ScrcpySession {
 
         val connection = Dadb.create("127.0.0.1", port, AdbIdentity.keyPair(context))
         dadb = connection
+        AdbConnection.keep(context, connection)
 
         val scid = ScrcpyServer.scid()
         val options = buildString {
             append("video=$wantVideo audio=false control=true")
             if (wantVideo) append(" video_codec=h264 max_size=$maxSize video_bit_rate=$VIDEO_BIT_RATE")
+            if (wantVideo && videoOptions.isNotEmpty()) append(" ").append(videoOptions)
         }
         BridgeLog.i(SCOPE, "starting server $version (video=$wantVideo)")
         shell = ScrcpyServer.launch(context, connection, version, scid, options)

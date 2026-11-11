@@ -12,6 +12,7 @@ import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
 import com.vasmarfas.notivisor.MainActivity
 import com.vasmarfas.notivisor.R
+import com.vasmarfas.notivisor.core.control.CastSource
 import com.vasmarfas.notivisor.core.util.BridgeLog
 import com.vasmarfas.notivisor.headset.core.HeadsetBridge
 import kotlinx.coroutines.delay
@@ -39,6 +40,10 @@ class ReceiverService : LifecycleService() {
             }
         }
         lifecycleScope.launch { heartbeat() }
+        val settings = HeadsetBridge.settings
+        if (settings.webAutoStart && settings.castSource != CastSource.PROJECTION) {
+            HeadsetCastService.start(this, settings.castSource, web = true)
+        }
         BridgeLog.i(SCOPE, "service created")
     }
 

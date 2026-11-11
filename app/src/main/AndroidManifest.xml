@@ -36,6 +36,11 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
 
+    <uses-permission
+        android:name="android.permission.WRITE_SECURE_SETTINGS"
+        tools:ignore="ProtectedPermissions" />
+
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="horizonos.permission.HEADSET_CAMERA" />
 
@@ -63,6 +68,7 @@
         android:required="false" />
 
     <queries>
+        <package android:name="com.oculus.magicislandcastingservice" />
         <intent>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
@@ -197,7 +203,7 @@
         <service
             android:name=".headset.service.HeadsetCastService"
             android:exported="false"
-            android:foregroundServiceType="connectedDevice" />
+            android:foregroundServiceType="connectedDevice|mediaProjection" />
 
         <service
             android:name=".headset.service.RemoteKeyboardService"

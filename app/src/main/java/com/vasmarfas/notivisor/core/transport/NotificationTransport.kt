@@ -47,6 +47,10 @@ data class TransportConfig(
         const val CAST_STREAM_PORT = 47831
 
         const val FILE_STREAM_PORT = 47832
+
+        const val MAGIC_CAST_PORT = 47833
+
+        const val WEB_CAST_PORT = 8080
     }
 }
 

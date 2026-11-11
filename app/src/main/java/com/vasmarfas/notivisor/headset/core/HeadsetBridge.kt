@@ -130,7 +130,7 @@ object HeadsetBridge {
 
             Action.CAST_START -> {
                 val source = CastSource.parse(envelope.data)
-                HeadsetCastService.start(appContext, source)
+                HeadsetCastService.start(appContext, source, phone = true)
                 BridgeLog.i(SCOPE, "the phone opened the viewer, casting via $source")
             }
 
@@ -142,7 +142,7 @@ object HeadsetBridge {
             Action.FILE_OFFER -> FileReceiver.accept(appContext, link, settings, envelope)
 
             Action.CAST_STOP -> {
-                HeadsetCastService.stop(appContext)
+                HeadsetCastService.stopPhone(appContext)
                 BridgeLog.i(SCOPE, "the phone closed the viewer")
             }
 

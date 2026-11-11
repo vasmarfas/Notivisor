@@ -23,13 +23,13 @@ object HeadsetProximity {
     fun state(context: Context): Boolean? {
         if (!probed) {
             probed = true
-            Thread { lastKnown = query(context) }.apply { isDaemon = true }.start()
+            Thread { lastKnown = query(context, wake = false) }.apply { isDaemon = true }.start()
         }
         return lastKnown
     }
 
-    fun query(context: Context): Boolean? {
-        val dump = LocalShell.run(context, "dumpsys $POWER_SERVICE") ?: return null
+    fun query(context: Context, wake: Boolean = true): Boolean? {
+        val dump = LocalShell.run(context, "dumpsys $POWER_SERVICE", wake = wake) ?: return null
         val line = dump.lineSequence().firstOrNull { it.contains(STATE_LINE) } ?: return null
         return when (line.substringAfter(STATE_LINE).trim()) {
             "CLOSE" -> true

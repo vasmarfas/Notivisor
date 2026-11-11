@@ -5,6 +5,9 @@ import android.net.nsd.NsdManager
 import android.net.nsd.NsdServiceInfo
 import com.vasmarfas.notivisor.core.util.BridgeLog
 import java.net.InetAddress
+import java.net.InetSocketAddress
+import java.net.NetworkInterface
+import java.net.Socket
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
@@ -31,7 +34,8 @@ object AdbMdns {
                 @Suppress("DEPRECATION")
                 val host = serviceInfo.host ?: return
                 val port = serviceInfo.port
-                if (port > 0 && result.compareAndSet(null, Service(host, port))) latch.countDown()
+                if (port <= 0 || !isLocal(host) || !isOpen(port)) return
+                if (result.compareAndSet(null, Service(host, port))) latch.countDown()
             }
         }
 
@@ -63,4 +67,14 @@ object AdbMdns {
             runCatching { nsd.stopServiceDiscovery(discoveryListener) }
         }
     }
+
+    private fun isLocal(host: InetAddress): Boolean =
+        host.isLoopbackAddress || runCatching { NetworkInterface.getByInetAddress(host) != null }.getOrDefault(false)
+
+    private fun isOpen(port: Int): Boolean = runCatching {
+        Socket().use { it.connect(InetSocketAddress(InetAddress.getLoopbackAddress(), port), PROBE_TIMEOUT_MS) }
+        true
+    }.getOrDefault(false)
+
+    private const val PROBE_TIMEOUT_MS = 500
 }

@@ -100,7 +100,7 @@ class ScreenCaptureService : Service() {
         while (size == null && client === socket) {
             when (val packet = ScrcpySession.readPacket()) {
                 is CapturePacket.Size -> size = packet
-                is CapturePacket.Frame -> Unit
+                is CapturePacket.Frame, is CapturePacket.Sound -> Unit
                 null -> {
                     BridgeLog.w(SCOPE, "scrcpy stream ended before announcing a size")
                     return
@@ -124,6 +124,7 @@ class ScreenCaptureService : Service() {
         while (client === socket && !socket.isClosed) {
             when (val packet = ScrcpySession.readPacket()) {
                 is CapturePacket.Frame -> sendFrame(packet.data)
+                is CapturePacket.Sound -> Unit
 
                 is CapturePacket.Size -> if (
                     packet.width != announced.width || packet.height != announced.height

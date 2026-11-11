@@ -6,10 +6,13 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.graphics.ImageFormat
+import android.media.AudioManager
 import android.media.ImageReader
+import android.media.ToneGenerator
 import android.os.Build
 import android.os.Bundle
 import com.vasmarfas.notivisor.core.control.CapturePacket
+import com.vasmarfas.notivisor.core.control.CastQuality
 import com.vasmarfas.notivisor.core.control.CastSource
 import com.vasmarfas.notivisor.core.control.MagicCastSession
 import com.vasmarfas.notivisor.core.control.ScreenReceiver
@@ -21,6 +24,7 @@ import com.vasmarfas.notivisor.core.transport.TransportConfig
 import com.vasmarfas.notivisor.core.transport.TransportKind
 import com.vasmarfas.notivisor.core.util.BridgeLog
 import com.vasmarfas.notivisor.headset.core.Alarm
+import com.vasmarfas.notivisor.headset.core.HeadsetAdb
 import com.vasmarfas.notivisor.headset.core.HeadsetBridge
 import com.vasmarfas.notivisor.headset.core.HeadsetInput
 import com.vasmarfas.notivisor.headset.core.HeadsetOverlay
@@ -152,6 +156,9 @@ class DebugReceiver : BroadcastReceiver() {
 
             "alarm" -> Alarm.sound(context)
 
+            "tone" -> ToneGenerator(AudioManager.STREAM_MUSIC, 80)
+                .startTone(ToneGenerator.TONE_DTMF_5, intent.getIntExtra("ms", 5_000))
+
             "report" -> HeadsetBridge.reportStatus()
 
             "mirrortest" -> {
@@ -212,8 +219,44 @@ class DebugReceiver : BroadcastReceiver() {
             } else {
                 val source = CastSource.parse(intent.getStringExtra("source"))
                 HeadsetBridge.send(Envelope(action = Action.CAST_START, data = source.name))
-                HeadsetCastService.start(context, source)
+                HeadsetCastService.start(context, source, phone = true)
             }
+
+            "castweb" -> if (intent.getBooleanExtra("stop", false)) {
+                HeadsetCastService.stopWeb(context)
+            } else {
+                if (intent.hasExtra("password")) {
+                    settings.webPassword = intent.getStringExtra("password")?.takeIf { it.isNotEmpty() }
+                }
+                if (intent.hasExtra("control")) settings.webControl = intent.getBooleanExtra("control", false)
+                val source = CastSource.parse(intent.getStringExtra("source"))
+                settings.castSource = source
+                HeadsetCastService.start(context, source, web = true)
+                BridgeLog.i(
+                    SCOPE,
+                    "castweb: port ${settings.webPort}, password ${settings.webPassword != null}, " +
+                            "control ${settings.webControl}"
+                )
+            }
+
+            "castset" -> {
+                var config = settings.castConfig
+                intent.getStringExtra("quality")?.let { name ->
+                    CastQuality.entries.firstOrNull { it.name == name }?.let { config = config.copy(quality = it) }
+                }
+                if (intent.hasExtra("fps")) config = config.copy(fps = intent.getIntExtra("fps", 30))
+                if (intent.hasExtra("bitrate")) config = config.copy(bitRate = intent.getIntExtra("bitrate", 0))
+                if (intent.hasExtra("right")) config = config.copy(rightEye = intent.getBooleanExtra("right", true))
+                if (intent.hasExtra("sound")) config = config.copy(sound = intent.getBooleanExtra("sound", true))
+                settings.castConfig = config
+                intent.getStringExtra("source")?.let { settings.castSource = CastSource.parse(it) }
+                HeadsetCastService.refresh(context)
+                BridgeLog.i(SCOPE, "castset: ${settings.castSource} $config")
+            }
+
+            "adb" -> Thread {
+                BridgeLog.i(SCOPE, "adb: ${HeadsetAdb.probe(context)}")
+            }.apply { isDaemon = true }.start()
 
             "prox" -> Thread {
                 val off = HeadsetProximity.set(context, intent.getBooleanExtra("off", true))
@@ -221,12 +264,14 @@ class DebugReceiver : BroadcastReceiver() {
             }.apply { isDaemon = true }.start()
 
             "castprobe" -> Thread {
-                if (!MagicCastSession.start(context)) {
+                val viaAdb = intent.getBooleanExtra("adb", false)
+                if (!MagicCastSession.start(context, settings.castConfig, viaAdb)) {
                     BridgeLog.w(SCOPE, "castprobe: casting service never came up")
                     return@Thread
                 }
                 var frames = 0
                 var config = 0
+                var sound = 0
                 val deadline = System.currentTimeMillis() + PROBE_MS
                 while (System.currentTimeMillis() < deadline) {
                     when (val packet = MagicCastSession.readPacket()) {
@@ -236,11 +281,13 @@ class DebugReceiver : BroadcastReceiver() {
                         is CapturePacket.Frame ->
                             if (packet.isConfig) config++ else frames++
 
+                        is CapturePacket.Sound -> sound += packet.data.size
+
                         null -> break
                     }
                 }
-                MagicCastSession.close()
-                BridgeLog.i(SCOPE, "castprobe: $frames frames, $config parameter sets")
+                MagicCastSession.close(context)
+                BridgeLog.i(SCOPE, "castprobe: $frames frames, $config parameter sets, $sound B of sound")
             }.apply { isDaemon = true }.start()
 
             "textreq" -> {
